@@ -1,0 +1,80 @@
+{
+  "name": "react-sdk-example",
+  "version": "0.1.0",
+  "private": true,
+  "homepage": ".",
+  "main": "electron.js",
+  "dependencies": {
+    "@headlessui/react": "^2.2.0",
+    "@heroicons/react": "^2.2.0",
+    "@popperjs/core": "^2.11.8",
+    "@videosdk.live/react-sdk": "^0.4.8",
+    "lottie-react": "^2.4.1",
+    "postcss-flexbugs-fixes": "^5.0.2",
+    "postcss-loader": "^8.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-player": "^2.16.0",
+    "react-responsive": "^10.0.1",
+    "react-scripts": "5.0.1",
+    "react-toastify": "^11.0.5",
+    "web-vitals": "^4.2.4"
+  },
+  "overrides": {
+    "nth-check": "2.1.1",
+    "postcss": "^8.4.31"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^9.2.1",
+    "electron": "^41.1.1",
+    "electron-builder": "^26.8.1",
+    "electron-is-dev": "^3.0.1",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "wait-on": "^8.0.5"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "electron": "electron .",
+    "dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "build": "react-scripts build",
+    "build-electron": "npm run build && electron-builder --mac",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "build": {
+    "appId": "com.yourapp.app",
+    "extends": null,
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "build/**/*",
+      "electron.js",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "target": ["dmg"]
+    }
+  }
+}

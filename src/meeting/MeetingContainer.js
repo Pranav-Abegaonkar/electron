@@ -7,11 +7,13 @@ import { PresenterView } from "../components/PresenterView";
 import { nameTructed, trimSnackBarText } from "../utils/helper";
 import WaitingToJoinScreen from "../components/screens/WaitingToJoinScreen";
 import ConfirmBox from "../components/ConfirmBox";
+import NetworkQualityPopup from "../components/NetworkQualityPopup";
 import useIsMobile from "../hooks/useIsMobile";
 import useIsTab from "../hooks/useIsTab";
 import { useMediaQuery } from "react-responsive";
 import { toast } from "react-toastify";
 import { useMeetingAppContext } from "../MeetingAppContextDef";
+import ParticipantLeftModal from "../components/ParticipantLeftModal";
 
 export function MeetingContainer({
   onMeetingLeave,
@@ -21,6 +23,10 @@ export function MeetingContainer({
     setSelectedMic,
     setSelectedWebcam,
     setSelectedSpeaker,
+    participantLeftModalData,
+    setParticipantLeftModalData,
+    setReconnectingParticipants,
+    reconnectingParticipants,
   } = useMeetingAppContext();
 
   const [participantsData, setParticipantsData] = useState([]);
@@ -46,6 +52,14 @@ export function MeetingContainer({
     return null;
   }, [participantsData]);
 
+  // useEffect(() => {
+  //   // Wait 10 seconds after joining, then show the popup
+  //   const timer = setTimeout(() => {
+  //     setNetworkAlert(true);
+  //   }, 10000);
+  //   return () => clearTimeout(timer);
+  // }, []);
+
   const { useRaisedHandParticipants } = useMeetingAppContext();
   const bottomBarHeight = 60;
 
@@ -54,6 +68,14 @@ export function MeetingContainer({
   const [localParticipantAllowedJoin, setLocalParticipantAllowedJoin] = useState(null);
   const [meetingErrorVisible, setMeetingErrorVisible] = useState(false);
   const [meetingError, setMeetingError] = useState(false);
+  const [activeLimitations, setActiveLimitations] = useState({
+    bandwidth: false,
+    congestion: false,
+    cpu: false,
+  });
+
+  const [isLocalReconnecting, setIsLocalReconnecting] = useState(false);
+  const localReconnectTimerRef = useRef(null);
 
   const mMeetingRef = useRef();
   const containerRef = createRef();
@@ -100,6 +122,14 @@ export function MeetingContainer({
     setIsMeetingLeft(true);
   };
 
+  useEffect(() => {
+    return () => {
+      if (localReconnectTimerRef.current) {
+        clearTimeout(localReconnectTimerRef.current);
+      }
+    };
+  }, []);
+
   const _handleOnRecordingStateChanged = ({ status }) => {
     if (
       status === Constants.recordingEvents.RECORDING_STARTED ||
@@ -124,7 +154,7 @@ export function MeetingContainer({
     }
   };
 
-  function onParticipantJoined(participant) {
+  function handleParticipantJoinedLocal(participant) {
     // Change quality to low, med or high based on resolution
     participant && participant.setQuality("high");
   }
@@ -179,10 +209,48 @@ export function MeetingContainer({
   };
 
   const mMeeting = useMeeting({
-    onParticipantJoined,
+    onQualityLimitation: (option) => {
+      console.log("Quality limitation", option);
+      const { state, type } = option;
+      setActiveLimitations((prev) => ({
+        ...prev,
+        [type]: state === "detected",
+      }));
+    },
+    onParticipantJoined: (participant) => {
+      setReconnectingParticipants(prev => prev.filter(p => (p.id || p) !== participant.id));
+      handleParticipantJoinedLocal(participant);
+    },
+    onParticipantLeft: (participant) => {
+      setReconnectingParticipants(prev => {
+        if (!prev.find(p => p.id === participant.id)) {
+          return [...prev, { id: participant.id, displayName: participant.displayName }];
+        }
+        return prev;
+      });
+    },
     onEntryResponded,
     onMeetingJoined,
-    onMeetingStateChanged: ({state}) => {
+    onMeetingStateChanged: ({ state }) => {
+      if (state === "RECONNECTING") {
+        setIsLocalReconnecting(true);
+        if (localReconnectTimerRef.current) clearTimeout(localReconnectTimerRef.current);
+        localReconnectTimerRef.current = setTimeout(() => {
+          setIsLocalReconnecting(false);
+          _handleMeetingLeft();
+        }, 50000);
+      } else if (state === "CONNECTED") {
+        setIsLocalReconnecting(false);
+        if (localReconnectTimerRef.current) {
+          clearTimeout(localReconnectTimerRef.current);
+          localReconnectTimerRef.current = null;
+        }
+      } else if (state === "DISCONNECTED") {
+        setIsLocalReconnecting(false);
+        if (localReconnectTimerRef.current) clearTimeout(localReconnectTimerRef.current);
+        _handleMeetingLeft();
+      }
+
       toast(`Meeting is in ${state} state`, {
         position: "bottom-left",
         autoClose: 4000,
@@ -204,15 +272,22 @@ export function MeetingContainer({
   useEffect(() => {
     const debounceTimeout = setTimeout(() => {
       const participantIds = Array.from(mMeeting.participants.keys());
+
+      reconnectingParticipants.forEach(rp => {
+        const id = rp.id || rp;
+        if (!participantIds.includes(id)) {
+          participantIds.push(id);
+        }
+      });
+
       console.log("Debounced participantIds", participantIds);
 
       setParticipantsData(participantIds);
       console.log("Setting participants");
     }, 500);
 
-
     return () => clearTimeout(debounceTimeout);
-  }, [mMeeting.participants]);
+  }, [mMeeting.participants, reconnectingParticipants]);
 
 
   useEffect(() => {
@@ -285,6 +360,13 @@ export function MeetingContainer({
         {typeof localParticipantAllowedJoin === "boolean" ? (
           localParticipantAllowedJoin ? (
             <>
+              {isLocalReconnecting && (
+                <div className="absolute inset-0 z-50 bg-gray-800 flex flex-col items-center justify-center">
+                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white mb-4"></div>
+                  <h2 className="text-white text-xl font-semibold">Reconnecting...</h2>
+                  <p className="text-gray-400 mt-2">Please wait while we try to restore your connection.</p>
+                </div>
+              )}
               <div className={` flex flex-1 flex-row bg-gray-800 `}>
                 <div className={`flex flex-1 `}>
                   {isPresenting ? (
@@ -324,6 +406,17 @@ export function MeetingContainer({
           }}
           title={`Error Code: ${meetingError.code}`}
           subTitle={meetingError.message}
+        />
+        <NetworkQualityPopup
+          limitations={activeLimitations}
+        />
+        <ParticipantLeftModal
+          open={participantLeftModalData.open}
+          participantName={participantLeftModalData.participantName}
+          onEndCall={() => {
+            setParticipantLeftModalData({ open: false, participantName: "" });
+            mMeeting.leave();
+          }}
         />
       </div>
     </div>

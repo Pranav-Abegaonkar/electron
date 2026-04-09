@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useMeeting } from "@videosdk.live/react-sdk";
 import { MemoizedParticipantGrid } from "../../components/ParticipantGrid";
+import { useMeetingAppContext } from "../../MeetingAppContextDef";
 
 function ParticipantsViewer({ isPresenting }) {
   const {
@@ -9,8 +10,9 @@ function ParticipantsViewer({ isPresenting }) {
     activeSpeakerId,
     localParticipant,
     localScreenShareOn,
-    presenterId,
   } = useMeeting();
+
+  const { reconnectingParticipants } = useMeetingAppContext();
 
   const participantIds = useMemo(() => {
     const pinnedParticipantId = [...pinnedParticipants.keys()].filter(
@@ -26,6 +28,13 @@ function ParticipantsViewer({ isPresenting }) {
         );
       }
     );
+
+    reconnectingParticipants?.forEach(rp => {
+      const id = rp.id || rp;
+      if (!regularParticipantIds.includes(id) && id !== localParticipant?.id) {
+        regularParticipantIds.push(id);
+      }
+    });
 
     const ids = [
       localParticipant.id,
@@ -43,8 +52,8 @@ function ParticipantsViewer({ isPresenting }) {
     participants,
     activeSpeakerId,
     pinnedParticipants,
-    presenterId,
     localScreenShareOn,
+    reconnectingParticipants,
   ]);
 
   return (

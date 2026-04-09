@@ -13,6 +13,8 @@ export const MeetingAppProvider = ({ children }) => {
   const [raisedHandsParticipants, setRaisedHandsParticipants] = useState([]);
   const [sideBarMode, setSideBarMode] = useState(null);
   const [pipMode, setPipMode] = useState(false);
+  const [reconnectingParticipants, setReconnectingParticipants] = useState([]); // Track reconnecting participants
+  const [participantLeftModalData, setParticipantLeftModalData] = useState({ open: false, participantName: "" });
 
   const useRaisedHandParticipants = () => {
     const raisedHandsParticipantsRef = useRef();
@@ -77,6 +79,8 @@ export const MeetingAppProvider = ({ children }) => {
         pipMode,
         isCameraPermissionAllowed,
         isMicrophonePermissionAllowed,
+        reconnectingParticipants,
+        participantLeftModalData,
 
         // setters
 
@@ -89,6 +93,8 @@ export const MeetingAppProvider = ({ children }) => {
         useRaisedHandParticipants,
         setIsCameraPermissionAllowed,
         setIsMicrophonePermissionAllowed,
+        setReconnectingParticipants,
+        setParticipantLeftModalData,
       }}
     >
       {children}

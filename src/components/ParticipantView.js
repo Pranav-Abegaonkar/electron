@@ -327,10 +327,10 @@ export const CornerDisplayName = ({
                               }}
                             >
                               <p className="text-sm text-white font-semibold">{`Quality Score : ${score > 7
-                                  ? "Good"
-                                  : score > 4
-                                    ? "Average"
-                                    : "Poor"
+                                ? "Good"
+                                : score > 4
+                                  ? "Average"
+                                  : "Poor"
                                 }`}</p>
 
                               <button
@@ -418,9 +418,38 @@ export function ParticipantView({ participantId }) {
     isActiveSpeaker,
   } = useParticipant(participantId);
 
-  const { selectedSpeaker } = useMeetingAppContext();
+  const { selectedSpeaker, reconnectingParticipants, setParticipantLeftModalData } = useMeetingAppContext();
   const micRef = useRef(null);
   const [mouseOver, setMouseOver] = useState(false);
+
+  const [countdown, setCountdown] = useState(55);
+  const isReconnectingObj = reconnectingParticipants?.find(p => (p.id || p) === participantId);
+
+  const isActivelyReconnecting = !!isReconnectingObj;
+
+  const activeDisplayName = displayName || isReconnectingObj?.displayName || "Participant";
+
+  useEffect(() => {
+    let intervalId;
+    if (isActivelyReconnecting) {
+      setCountdown(55);
+      intervalId = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(intervalId);
+            setParticipantLeftModalData({ open: true, participantName: activeDisplayName });
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setCountdown(55);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isActivelyReconnecting, activeDisplayName, setParticipantLeftModalData]);
 
   useEffect(() => {
     const isFirefox =
@@ -454,7 +483,7 @@ export function ParticipantView({ participantId }) {
   }, [micStream, micOn, micRef])
 
 
-  return mode === "SEND_AND_RECV" ? (
+  return (mode === "SEND_AND_RECV" || isActivelyReconnecting) ? (
     <div
       onMouseEnter={() => {
         setMouseOver(true);
@@ -483,7 +512,7 @@ export function ParticipantView({ participantId }) {
             className={`z-10 flex items-center justify-center rounded-full bg-gray-800 2xl:h-[92px] h-[52px] 2xl:w-[92px] w-[52px]`}
           >
             <p className="text-2xl text-white">
-              {String(displayName).charAt(0).toUpperCase()}
+              {String(activeDisplayName).charAt(0).toUpperCase()}
             </p>
           </div>
         </div>
@@ -491,7 +520,7 @@ export function ParticipantView({ participantId }) {
       <CornerDisplayName
         {...{
           isLocal,
-          displayName,
+          displayName: activeDisplayName,
           micOn,
           webcamOn,
           isPresenting: false,
@@ -500,6 +529,15 @@ export function ParticipantView({ participantId }) {
           isActiveSpeaker,
         }}
       />
+      {isActivelyReconnecting && (
+        <div className="absolute inset-0 z-20" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white mb-2"></div>
+            <p className="text-white text-sm font-semibold">Reconnecting...</p>
+            <p className="text-red-400 text-xs font-bold mt-1">Disconnecting in {countdown}s</p>
+          </div>
+        </div>
+      )}
     </div>
   ) : null;
 }

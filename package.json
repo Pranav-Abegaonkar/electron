@@ -65,18 +65,31 @@
   "build": {
     "appId": "com.yourapp.app",
     "extends": null,
+    "npmRebuild": false,
     "directories": {
       "output": "dist-electron"
     },
     "files": [
       "build/**/*",
       "electron.js",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "!node_modules/canvas/**/*",
+      "!node_modules/canvas"
     ],
     "mac": {
       "category": "public.app-category.video",
+      "hardenedRuntime": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "This app requires camera access for video calls.",
+        "NSMicrophoneUsageDescription": "This app requires microphone access for audio calls."
+      },
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
       ]
     }
   }

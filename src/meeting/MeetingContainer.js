@@ -16,12 +16,14 @@ import { useMeetingAppContext } from "../MeetingAppContextDef";
 import ParticipantLeftModal from "../components/ParticipantLeftModal";
 import MemoizedWhiteboard, { convertHWAspectRatio } from "../components/whiteboard/WhiteboardContainer";
 import { ParticipantView } from "../components/ParticipantView";
+import useMediaStream from "../hooks/useMediaStream";
 
 export function MeetingContainer({
   onMeetingLeave,
   setIsMeetingLeft,
 }) {
   const {
+    selectedWebcam,
     setSelectedMic,
     setSelectedWebcam,
     setSelectedSpeaker,
@@ -86,6 +88,14 @@ export function MeetingContainer({
   const containerRef = createRef();
   const containerHeightRef = useRef();
   const containerWidthRef = useRef();
+  const isDegradedQualityRef = useRef(false);
+  // Tracks which participant IDs are currently causing degradation.
+  // Quality restores only when this Set is empty (all recovered).
+  const degradedByRef = useRef(new Set());
+  // Ref so handleQualityLimitation can always call the latest publish
+  // regardless of which render's closure useMeeting captured.
+  const publishQCRef = useRef(null);
+  const { getVideoTrack } = useMediaStream();
 
   useEffect(() => {
     containerHeightRef.current = containerHeight;
@@ -213,22 +223,61 @@ export function MeetingContainer({
     });
   };
 
+  // ── Quality limitation handler ────────────────────────────────────────────
+  //
+  // Uses publishQCRef (a ref) instead of publishQualityControl directly, so
+  // the stale-closure problem with useMeeting callbacks is avoided — the ref
+  // always points to the latest publish function from the current render.
+  async function handleQualityLimitation({ state, type }) {
+    if (state === "detected") {
+      // Show popup only on the affected participant
+      setActiveLimitations((prev) => ({ ...prev, [type]: true }));
+
+      // Publish DEGRADE once (guard prevents duplicate publishes)
+      if (!isDegradedQualityRef.current) {
+        isDegradedQualityRef.current = true;
+        try {
+          await publishQCRef.current(
+            JSON.stringify({
+              event: "DEGRADE",
+              byParticipantId: mMeetingRef.current?.localParticipant?.id,
+            }),
+            { persist: true }
+          );
+        } catch (err) {
+          console.error("[QUALITY_CONTROL] ❌ DEGRADE publish failed:", err);
+          isDegradedQualityRef.current = false; // allow retry
+        }
+      }
+    }
+
+    if (state === "resolved") {
+      // Hide popup only on the affected participant
+      setActiveLimitations((prev) => {
+        const next = { ...prev, [type]: false };
+
+        // Publish RESTORE when ALL local limitation types are clear
+        const allClear = !Object.values(next).some(Boolean);
+        if (allClear && isDegradedQualityRef.current) {
+          isDegradedQualityRef.current = false;
+          publishQCRef.current(
+            JSON.stringify({
+              event: "RESTORE",
+              byParticipantId: mMeetingRef.current?.localParticipant?.id,
+            }),
+            { persist: true }
+          )
+            .then(() => { })
+            .catch((err) => console.error("[QUALITY_CONTROL] ❌ RESTORE publish failed:", err));
+        }
+        return next;
+      });
+    }
+  }
+
   const mMeeting = useMeeting({
     onQualityLimitation: (option) => {
-      console.log("Quality limitation", option);
-      const { state, type } = option;
-      if (state === "detected") {
-        setActiveLimitations((prev) => ({
-          ...prev,
-          [type]: true,   // show popup
-        }));
-      }
-      if (state === "resolved") {
-        setActiveLimitations((prev) => ({
-          ...prev,
-          [type]: false,  // hide popup — was incorrectly `state === "resolved"` (= true)
-        }));
-      }
+      handleQualityLimitation(option);
     },
     onParticipantJoined: (participant) => {
       setReconnectingParticipants(prev => prev.filter(p => (p.id || p) !== participant.id));
@@ -304,6 +353,64 @@ export function MeetingContainer({
       }
     },
   });
+
+  // ── QUALITY_CONTROL PubSub ────────────────────────────────────────────────
+  // When any participant detects a quality limitation, they broadcast DEGRADE.
+  // All participants (including the sender) receive it and each switches their
+  // own local webcam to h360p_w640p. When the limitation resolves, RESTORE is
+  // broadcast and all switch back to h540p_w960p.
+  // degradedByRef tracks which participant IDs are still in limited state so
+  // restoration only happens when every degraded participant has recovered.
+
+  const switchWebcamQuality = (encoderConfig) => {
+    getVideoTrack({ webcamId: selectedWebcam.id, encoderConfig, multiStream: false })
+      .then((track) => {
+        if (track) {
+          mMeetingRef.current?.changeWebcam(track);
+        }
+      })
+      .catch((err) => console.error("[QUALITY_CONTROL] ❌ changeWebcam failed:", err));
+  };
+
+  const { publish: publishQualityControl } = usePubSub("QUALITY_CONTROL", {
+    onMessageReceived: ({ message }) => {
+      try {
+        const { event, byParticipantId } = JSON.parse(message);
+        if (event === "DEGRADE") {
+          degradedByRef.current.add(byParticipantId);
+          switchWebcamQuality("h360p_w640p");
+        }
+
+        if (event === "RESTORE") {
+          degradedByRef.current.delete(byParticipantId);
+          if (degradedByRef.current.size === 0) {
+            switchWebcamQuality("h540p_w960p");
+          }
+        }
+      } catch (e) {
+        console.error("[QUALITY_CONTROL] ❌ Failed to parse message:", e);
+      }
+    },
+    onOldMessagesReceived: (messages) => {
+      try {
+        const degradedBy = new Set();
+        for (const msg of messages) {
+          const { event, byParticipantId } = JSON.parse(msg.message);
+          if (event === "DEGRADE") degradedBy.add(byParticipantId);
+          if (event === "RESTORE") degradedBy.delete(byParticipantId);
+        }
+        degradedByRef.current = degradedBy;
+        if (degradedBy.size > 0) {
+          switchWebcamQuality("h360p_w640p");
+        }
+      } catch (e) {
+        console.error("[QUALITY_CONTROL] ❌ Failed to replay old messages:", e);
+      }
+    },
+  });
+
+  // Keep the ref always pointing to the latest publish fn (fixes stale closure)
+  publishQCRef.current = publishQualityControl;
 
   useEffect(() => {
     const debounceTimeout = setTimeout(() => {

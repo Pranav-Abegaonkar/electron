@@ -40,7 +40,7 @@ function App() {
               micEnabled: micOn,
               webcamEnabled: webcamOn,
               name: participantName ? participantName : "TestUser",
-              multiStream: true,
+              multiStream: false,
               customCameraVideoTrack: customVideoStream,
               customMicrophoneAudioTrack: customAudioStream
             }}

@@ -24,6 +24,7 @@ import ParticipantsIcon from "../../icons/Bottombar/ParticipantsIcon";
 import EndIcon from "../../icons/Bottombar/EndIcon";
 import RaiseHandIcon from "../../icons/Bottombar/RaiseHandIcon";
 import PipIcon from "../../icons/Bottombar/PipIcon";
+import WhiteboardIcon from "../../icons/Bottombar/WhiteboardIcon";
 import { OutlinedButton } from "../../components/buttons/OutlinedButton";
 import useIsTab from "../../hooks/useIsTab";
 import useIsMobile from "../../hooks/useIsMobile";
@@ -492,7 +493,7 @@ const WebCamBTN = () => {
 };
 
 export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
-  const { sideBarMode, setSideBarMode } = useMeetingAppContext();
+  const { sideBarMode, setSideBarMode, whiteboardStarted } = useMeetingAppContext();
   const RaiseHandBTN = ({ isMobile, isTab }) => {
     const { publish } = usePubSub("RAISE_HAND");
     const RaiseHand = () => {
@@ -519,6 +520,40 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
       />
     );
   };
+
+  const WhiteBoardBTN = ({ isMobile, isTab }) => {
+    // Use WB_CONTROL PubSub to broadcast start/stop to all participants.
+    // whiteboardStarted in context is kept in sync by MeetingContainer's
+    // WB_CONTROL listener so the button reflects the correct state for everyone.
+    const { publish: publishWBControl } = usePubSub("WB_CONTROL");
+    const { presenterId } = useMeeting();
+
+    const handleWhiteboardToggle = () => {
+      const event = whiteboardStarted ? "STOP" : "START";
+      publishWBControl(JSON.stringify({ event }), { persist: true });
+    };
+
+    return isMobile || isTab ? (
+      <MobileIconButton
+        id="whiteboard-btn"
+        tooltipTitle={whiteboardStarted ? "Stop Whiteboard" : "Start Whiteboard"}
+        buttonText={whiteboardStarted ? "Stop Board" : "Whiteboard"}
+        isFocused={whiteboardStarted}
+        Icon={WhiteboardIcon}
+        onClick={handleWhiteboardToggle}
+        disabled={!!presenterId && !whiteboardStarted}
+      />
+    ) : (
+      <OutlinedButton
+        Icon={WhiteboardIcon}
+        onClick={handleWhiteboardToggle}
+        isFocused={whiteboardStarted}
+        tooltip={whiteboardStarted ? "Stop Whiteboard" : "Start Whiteboard"}
+        disabled={!!presenterId && !whiteboardStarted}
+      />
+    );
+  };
+
 
   const RecordingBTN = () => {
     const { startRecording, stopRecording, recordingState } = useMeeting();
@@ -762,12 +797,14 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
       RECORDING: "RECORDING",
       PIP: "PIP",
       MEETING_ID_COPY: "MEETING_ID_COPY",
+      WHITEBOARD: "WHITEBOARD",
     }),
     []
   );
 
   const otherFeatures = [
     { icon: BottomBarButtonTypes.RAISE_HAND },
+    { icon: BottomBarButtonTypes.WHITEBOARD },
     { icon: BottomBarButtonTypes.PIP },
     { icon: BottomBarButtonTypes.SCREEN_SHARE },
     { icon: BottomBarButtonTypes.CHAT },
@@ -828,6 +865,8 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
                           >
                             {icon === BottomBarButtonTypes.RAISE_HAND ? (
                               <RaiseHandBTN isMobile={isMobile} isTab={isTab} />
+                            ) : icon === BottomBarButtonTypes.WHITEBOARD ? (
+                              <WhiteBoardBTN isMobile={isMobile} isTab={isTab} />
                             ) : icon === BottomBarButtonTypes.SCREEN_SHARE ? (
                               <ScreenShareBTN
                                 isMobile={isMobile}
@@ -871,6 +910,7 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
         <MicBTN />
         <WebCamBTN />
         <ScreenShareBTN isMobile={isMobile} isTab={isTab} />
+        <WhiteBoardBTN isMobile={isMobile} isTab={isTab} />
         <PipBTN isMobile={isMobile} isTab={isTab} />
         <LeaveBTN />
       </div>

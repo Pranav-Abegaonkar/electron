@@ -14,6 +14,8 @@ import { useMediaQuery } from "react-responsive";
 import { toast } from "react-toastify";
 import { useMeetingAppContext } from "../MeetingAppContextDef";
 import ParticipantLeftModal from "../components/ParticipantLeftModal";
+import MemoizedWhiteboard, { convertHWAspectRatio } from "../components/whiteboard/WhiteboardContainer";
+import { ParticipantView } from "../components/ParticipantView";
 
 export function MeetingContainer({
   onMeetingLeave,
@@ -27,6 +29,9 @@ export function MeetingContainer({
     setParticipantLeftModalData,
     setReconnectingParticipants,
     reconnectingParticipants,
+    whiteboardStarted,
+    setWhiteboardStarted,
+    sideBarMode,
   } = useMeetingAppContext();
 
   const [participantsData, setParticipantsData] = useState([]);
@@ -212,10 +217,18 @@ export function MeetingContainer({
     onQualityLimitation: (option) => {
       console.log("Quality limitation", option);
       const { state, type } = option;
-      setActiveLimitations((prev) => ({
-        ...prev,
-        [type]: state === "detected",
-      }));
+      if (state === "detected") {
+        setActiveLimitations((prev) => ({
+          ...prev,
+          [type]: true,   // show popup
+        }));
+      }
+      if (state === "resolved") {
+        setActiveLimitations((prev) => ({
+          ...prev,
+          [type]: false,  // hide popup — was incorrectly `state === "resolved"` (= true)
+        }));
+      }
     },
     onParticipantJoined: (participant) => {
       setReconnectingParticipants(prev => prev.filter(p => (p.id || p) !== participant.id));
@@ -269,6 +282,29 @@ export function MeetingContainer({
 
   const isPresenting = mMeeting.presenterId ? true : false;
 
+  // ─── WB layout constants ──────────────────────────────────────────────────
+  const WB_TOOLBAR_WIDTH = 48;
+  const WB_SPACING = 8;
+
+  const { publish: publishWBControl } = usePubSub("WB_CONTROL", {
+    onMessageReceived: ({ message }) => {
+      try {
+        const { event } = JSON.parse(message);
+        setWhiteboardStarted(event === "START");
+      } catch (e) { }
+    },
+    onOldMessagesReceived: (messages) => {
+      if (messages.length > 0) {
+        try {
+          const last = messages[messages.length - 1];
+          const { event } = JSON.parse(last.message);
+          // Only apply if not already in the correct state
+          setWhiteboardStarted(event === "START");
+        } catch (e) { }
+      }
+    },
+  });
+
   useEffect(() => {
     const debounceTimeout = setTimeout(() => {
       const participantIds = Array.from(mMeeting.participants.keys());
@@ -279,11 +315,7 @@ export function MeetingContainer({
           participantIds.push(id);
         }
       });
-
-      console.log("Debounced participantIds", participantIds);
-
       setParticipantsData(participantIds);
-      console.log("Setting participants");
     }, 500);
 
     return () => clearTimeout(debounceTimeout);
@@ -368,23 +400,96 @@ export function MeetingContainer({
                 </div>
               )}
               <div className={` flex flex-1 flex-row bg-gray-800 `}>
-                <div className={`flex flex-1 `}>
-                  {isPresenting ? (
-                    <PresenterView height={containerHeight - bottomBarHeight} />
-                  ) : null}
-                  {isPresenting && isMobile ? (
-                    participantsData.map((participantId) => (
-                      <ParticipantMicStream key={participantId} participantId={participantId} />
-                    ))
-                  ) : (
-                    <MemorizedParticipantView isPresenting={isPresenting} />
-                  )}
-                </div>
 
-                <SidebarConatiner
-                  height={containerHeight - bottomBarHeight}
-                  sideBarContainerWidth={sideBarContainerWidth}
-                />
+                {/* ── LEFT: main content ── */}
+                {whiteboardStarted ? (
+                  // ── WHITEBOARD ACTIVE: centered card with spacing from edges ──
+                  // Toolbar is now a floating overlay — canvas fills the full area
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: WB_SPACING,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <MemoizedWhiteboard
+                      height={containerHeight - bottomBarHeight - 2 * WB_SPACING}
+                      width={containerWidth - sideBarContainerWidth - 2 * WB_SPACING}
+                      whiteboardToolbarWidth={0}
+                      whiteboardSpacing={WB_SPACING}
+                      originalHeight={containerHeight - bottomBarHeight - 2 * WB_SPACING}
+                      originalWidth={containerWidth - sideBarContainerWidth - 2 * WB_SPACING}
+                      onClose={() =>
+                        publishWBControl(
+                          JSON.stringify({ event: "STOP" }),
+                          { persist: true }
+                        )
+                      }
+                    />
+                  </div>
+                ) : (
+                  // ── NORMAL MODE: original full-stretch layout ──
+                  <div className={`flex flex-1 flex-col`}>
+                    <div className={`flex flex-1`}>
+                      {isPresenting ? (
+                        <PresenterView height={containerHeight - bottomBarHeight} />
+                      ) : null}
+                      {isPresenting && isMobile ? (
+                        participantsData.map((participantId) => (
+                          <ParticipantMicStream key={participantId} participantId={participantId} />
+                        ))
+                      ) : (
+                        <MemorizedParticipantView isPresenting={isPresenting} />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── RIGHT: participant tiles column (whiteboard) or chat/participants sidebar ── */}
+                {whiteboardStarted && !sideBarMode ? (
+                  // Vertical participant tile stack — each tile is a fixed 16:9 card.
+                  // This gives proper height for camera video to render.
+                  <div
+                    style={{
+                      width: sideBarContainerWidth,
+                      height: containerHeight - bottomBarHeight,
+                      backgroundColor: "#0d1117",
+                      borderLeft: "1px solid rgba(255,255,255,0.05)",
+                      display: "flex",
+                      flexDirection: "column",
+                      flexShrink: 0,
+                      overflowY: "auto",
+                      overflowX: "hidden",
+                    }}
+                  >
+                    {participantsData.map((participantId) => {
+                      // Each tile: full column width, 16:9 aspect ratio height
+                      const tileH = Math.round(sideBarContainerWidth * (9 / 16));
+                      return (
+                        <div
+                          key={participantId}
+                          style={{
+                            width: "100%",
+                            height: tileH,
+                            flexShrink: 0,
+                            padding: 4,
+                          }}
+                        >
+                          <ParticipantView participantId={participantId} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  // Normal sidebar (chat / participants panel)
+                  <SidebarConatiner
+                    height={containerHeight - bottomBarHeight}
+                    sideBarContainerWidth={sideBarContainerWidth}
+                  />
+                )}
               </div>
 
               <BottomBar

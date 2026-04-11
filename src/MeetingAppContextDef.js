@@ -15,6 +15,7 @@ export const MeetingAppProvider = ({ children }) => {
   const [pipMode, setPipMode] = useState(false);
   const [reconnectingParticipants, setReconnectingParticipants] = useState([]); // Track reconnecting participants
   const [participantLeftModalData, setParticipantLeftModalData] = useState({ open: false, participantName: "" });
+  const [whiteboardStarted, setWhiteboardStarted] = useState(false);
 
   const useRaisedHandParticipants = () => {
     const raisedHandsParticipantsRef = useRef();
@@ -81,6 +82,7 @@ export const MeetingAppProvider = ({ children }) => {
         isMicrophonePermissionAllowed,
         reconnectingParticipants,
         participantLeftModalData,
+        whiteboardStarted,
 
         // setters
 
@@ -95,6 +97,7 @@ export const MeetingAppProvider = ({ children }) => {
         setIsMicrophonePermissionAllowed,
         setReconnectingParticipants,
         setParticipantLeftModalData,
+        setWhiteboardStarted,
       }}
     >
       {children}

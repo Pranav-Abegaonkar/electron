@@ -616,59 +616,59 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
     );
   };
 
-  const ScreenShareBTN = ({ isMobile, isTab }) => {
-    const { localScreenShareOn, toggleScreenShare, presenterId } = useMeeting();
+  // const ScreenShareBTN = ({ isMobile, isTab }) => {
+  //   const { localScreenShareOn, toggleScreenShare, presenterId } = useMeeting();
 
-    return isMobile || isTab ? (
-      <MobileIconButton
-        id="screen-share-btn"
-        tooltipTitle={
-          presenterId
-            ? localScreenShareOn
-              ? "Stop Presenting"
-              : null
-            : "Present Screen"
-        }
-        buttonText={
-          presenterId
-            ? localScreenShareOn
-              ? "Stop Presenting"
-              : null
-            : "Present Screen"
-        }
-        isFocused={localScreenShareOn}
-        Icon={ScreenShareIcon}
-        onClick={() => {
-          toggleScreenShare();
-        }}
-        disabled={
-          presenterId
-            ? localScreenShareOn
-              ? false
-              : true
-            : isMobile
-              ? true
-              : false
-        }
-      />
-    ) : (
-      <OutlinedButton
-        Icon={ScreenShareIcon}
-        onClick={() => {
-          toggleScreenShare();
-        }}
-        isFocused={localScreenShareOn}
-        tooltip={
-          presenterId
-            ? localScreenShareOn
-              ? "Stop Presenting"
-              : null
-            : "Present Screen"
-        }
-        disabled={presenterId ? (localScreenShareOn ? false : true) : false}
-      />
-    );
-  };
+  //   return isMobile || isTab ? (
+  //     <MobileIconButton
+  //       id="screen-share-btn"
+  //       tooltipTitle={
+  //         presenterId
+  //           ? localScreenShareOn
+  //             ? "Stop Presenting"
+  //             : null
+  //           : "Present Screen"
+  //       }
+  //       buttonText={
+  //         presenterId
+  //           ? localScreenShareOn
+  //             ? "Stop Presenting"
+  //             : null
+  //           : "Present Screen"
+  //       }
+  //       isFocused={localScreenShareOn}
+  //       Icon={ScreenShareIcon}
+  //       onClick={() => {
+  //         toggleScreenShare();
+  //       }}
+  //       disabled={
+  //         presenterId
+  //           ? localScreenShareOn
+  //             ? false
+  //             : true
+  //           : isMobile
+  //             ? true
+  //             : false
+  //       }
+  //     />
+  //   ) : (
+  //     <OutlinedButton
+  //       Icon={ScreenShareIcon}
+  //       onClick={() => {
+  //         toggleScreenShare();
+  //       }}
+  //       isFocused={localScreenShareOn}
+  //       tooltip={
+  //         presenterId
+  //           ? localScreenShareOn
+  //             ? "Stop Presenting"
+  //             : null
+  //           : "Present Screen"
+  //       }
+  //       disabled={presenterId ? (localScreenShareOn ? false : true) : false}
+  //     />
+  //   );
+  // };
 
   const LeaveBTN = () => {
     const { leave } = useMeeting();
@@ -859,35 +859,37 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
                         return (
                           <div
                             className={`grid items-center justify-center ${icon === BottomBarButtonTypes.MEETING_ID_COPY
-                                ? "col-span-7 sm:col-span-5 md:col-span-3"
-                                : "col-span-4 sm:col-span-3 md:col-span-2"
+                              ? "col-span-7 sm:col-span-5 md:col-span-3"
+                              : "col-span-4 sm:col-span-3 md:col-span-2"
                               }`}
                           >
                             {icon === BottomBarButtonTypes.RAISE_HAND ? (
                               <RaiseHandBTN isMobile={isMobile} isTab={isTab} />
                             ) : icon === BottomBarButtonTypes.WHITEBOARD ? (
                               <WhiteBoardBTN isMobile={isMobile} isTab={isTab} />
-                            ) : icon === BottomBarButtonTypes.SCREEN_SHARE ? (
-                              <ScreenShareBTN
-                                isMobile={isMobile}
-                                isTab={isTab}
-                              />
-                            ) : icon === BottomBarButtonTypes.CHAT ? (
-                              <ChatBTN isMobile={isMobile} isTab={isTab} />
-                            ) : icon === BottomBarButtonTypes.PARTICIPANTS ? (
-                              <ParticipantsBTN
-                                isMobile={isMobile}
-                                isTab={isTab}
-                              />
-                            ) : icon ===
-                              BottomBarButtonTypes.MEETING_ID_COPY ? (
-                              <MeetingIdCopyBTN
-                                isMobile={isMobile}
-                                isTab={isTab}
-                              />
-                            ) : icon === BottomBarButtonTypes.PIP ? (
-                              <PipBTN isMobile={isMobile} isTab={isTab} />
-                            ) : null}
+                            )
+                              //  : icon === BottomBarButtonTypes.SCREEN_SHARE ? (
+                              //   <ScreenShareBTN
+                              //     isMobile={isMobile}
+                              //     isTab={isTab}
+                              //   />
+                              // )
+                              : icon === BottomBarButtonTypes.CHAT ? (
+                                <ChatBTN isMobile={isMobile} isTab={isTab} />
+                              ) : icon === BottomBarButtonTypes.PARTICIPANTS ? (
+                                <ParticipantsBTN
+                                  isMobile={isMobile}
+                                  isTab={isTab}
+                                />
+                              ) : icon ===
+                                BottomBarButtonTypes.MEETING_ID_COPY ? (
+                                <MeetingIdCopyBTN
+                                  isMobile={isMobile}
+                                  isTab={isTab}
+                                />
+                              ) : icon === BottomBarButtonTypes.PIP ? (
+                                <PipBTN isMobile={isMobile} isTab={isTab} />
+                              ) : null}
                           </div>
                         );
                       })}
@@ -909,7 +911,7 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
         <RaiseHandBTN isMobile={isMobile} isTab={isTab} />
         <MicBTN />
         <WebCamBTN />
-        <ScreenShareBTN isMobile={isMobile} isTab={isTab} />
+        {/* <ScreenShareBTN isMobile={isMobile} isTab={isTab} /> */}
         <WhiteBoardBTN isMobile={isMobile} isTab={isTab} />
         <PipBTN isMobile={isMobile} isTab={isTab} />
         <LeaveBTN />

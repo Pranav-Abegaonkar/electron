@@ -18,6 +18,9 @@ import MemoizedWhiteboard, { convertHWAspectRatio } from "../components/whiteboa
 import { ParticipantView } from "../components/ParticipantView";
 import useMediaStream from "../hooks/useMediaStream";
 
+const SLACK_WEBHOOK_URL = process.env.REACT_APP_SLACK_WEBHOOK_URL;
+const QUALITY_LIMITATION_TYPES = ["bandwidth", "congestion", "cpu"];
+
 export function MeetingContainer({
   onMeetingLeave,
   setIsMeetingLeft,
@@ -34,6 +37,9 @@ export function MeetingContainer({
     whiteboardStarted,
     setWhiteboardStarted,
     sideBarMode,
+    setSideBarMode,
+    setPipMode,
+    setRaisedHandsParticipants,
   } = useMeetingAppContext();
 
   const [participantsData, setParticipantsData] = useState([]);
@@ -96,6 +102,106 @@ export function MeetingContainer({
   // regardless of which render's closure useMeeting captured.
   const publishQCRef = useRef(null);
   const { getVideoTrack } = useMediaStream();
+
+  const getRuntimeValue = (keys = []) => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    for (const key of keys) {
+      const fromQuery = params.get(key);
+      if (fromQuery) return fromQuery;
+
+      const fromLocalStorage = window.localStorage.getItem(key);
+      if (fromLocalStorage) return fromLocalStorage;
+
+      const fromSessionStorage = window.sessionStorage.getItem(key);
+      if (fromSessionStorage) return fromSessionStorage;
+    }
+    return null;
+  };
+
+  /**
+   * Triggers a Slack Alert natively via webhook whenever a participant's
+   * network quality limitation changes.
+   */
+  const sendQualityLimitationSlackAlert = async ({ state, type }) => {
+    if (!QUALITY_LIMITATION_TYPES.includes(type)) {
+      return;
+    }
+
+    if (!SLACK_WEBHOOK_URL) {
+      console.warn("[SLACK_ALERT] Missing REACT_APP_SLACK_WEBHOOK_URL");
+      return;
+    }
+
+    const meeting = mMeetingRef.current;
+    const localParticipant = meeting?.localParticipant;
+    const customMeetingId =
+      getRuntimeValue(["customMeetingId", "custom_meeting_id"]) || "N/A";
+    const meetingId = meeting?.meetingId || meeting?.id || "N/A";
+    const participantId = localParticipant?.id || "N/A";
+    const participantName = localParticipant?.displayName || "N/A";
+
+    const statusText = state === "detected" ? "Detected" : "Resolved";
+    const indicator = state === "detected" ? "⚠️" : "✅";
+    const color = state === "detected" ? "#FFA500" : "#2EB67C";
+
+    const payload = {
+      attachments: [
+        {
+          fallback: `${indicator} Quality limitation ${statusText}: ${type}`,
+          color: color,
+          blocks: [
+            {
+              type: "header",
+              text: {
+                type: "plain_text",
+                text: `${indicator} Quality Limitation ${statusText}`,
+                emoji: true,
+              },
+            },
+            {
+              type: "section",
+              fields: [
+                {
+                  type: "mrkdwn",
+                  text: `*Type:*\n\`${type}\``,
+                },
+                {
+                  type: "mrkdwn",
+                  text: `*Participant Name:*\n${participantName}`,
+                },
+                {
+                  type: "mrkdwn",
+                  text: `*Meeting ID:*\n\`${meetingId}\``,
+                },
+                {
+                  type: "mrkdwn",
+                  text: `*Participant ID:*\n\`${participantId}\``,
+                },
+                {
+                  type: "mrkdwn",
+                  text: `*Custom Meeting ID:*\n\`${customMeetingId}\``,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    try {
+      // Slack incoming webhooks from browser can fail CORS preflight when using
+      // JSON content-type. no-cors avoids preflight and still dispatches request.
+      await fetch(SLACK_WEBHOOK_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      console.error("[SLACK_ALERT] Failed to send quality alert:", error);
+    }
+  };
 
   useEffect(() => {
     containerHeightRef.current = containerHeight;
@@ -174,7 +280,9 @@ export function MeetingContainer({
     participant && participant.setQuality("high");
   }
 
-
+  /**
+   * Handles the response when the local participant attempts to join the meeting.
+   */
   function onEntryResponded(participantId, name) {
     if (mMeetingRef.current?.localParticipant?.id === participantId) {
       if (name === "allowed") {
@@ -188,20 +296,35 @@ export function MeetingContainer({
     }
   }
 
-  function onMeetingJoined() {
-    console.log("onMeetingJoined");
-  }
+  /**
+   * Triggered when the local participant successfully joins the meeting.
+   */
+  function onMeetingJoined() { }
 
+  /**
+   * Handles cleanup operations when the local participant leaves the meeting.
+   */
   function onMeetingLeft() {
-    setSelectedMic({ id: null, label: null })
-    setSelectedWebcam({ id: null, label: null })
-    setSelectedSpeaker({ id: null, label: null })
+    setSelectedMic({ id: null, label: null });
+    setSelectedWebcam({ id: null, label: null });
+    setSelectedSpeaker({ id: null, label: null });
+    
+    // Reset global meeting context states so they don't leak into the next meeting
+    setWhiteboardStarted(false);
+    setSideBarMode(null);
+    setPipMode(false);
+    setRaisedHandsParticipants([]);
+    setReconnectingParticipants([]);
+    setParticipantLeftModalData({ open: false, participantName: "" });
+
     onMeetingLeave();
   }
 
+  /**
+   * Handles critical and non-critical VideoSDK errors.
+   */
   const _handleOnError = (data) => {
     const { code, message } = data;
-    console.log("meetingErr", code, message)
 
     const joiningErrCodes = [
       4001, 4002, 4003, 4004, 4005, 4006, 4007, 4008, 4009, 4010,
@@ -223,15 +346,33 @@ export function MeetingContainer({
     });
   };
 
-  // ── Quality limitation handler ────────────────────────────────────────────
-  //
-  // Uses publishQCRef (a ref) instead of publishQualityControl directly, so
-  // the stale-closure problem with useMeeting callbacks is avoided — the ref
-  // always points to the latest publish function from the current render.
+  const activeLimitationsTrackerRef = useRef({
+    bandwidth: false,
+    congestion: false,
+    cpu: false,
+  });
+
+  /**
+   * Handles network quality limitation events (e.g. poor bandwidth or congestion).
+   * It deduplicates continuous 'detected' events and publishes DEGRADE/RESTORE
+   * commands via PubSub so all participants reduce video quality to compensate.
+   */
   async function handleQualityLimitation({ state, type }) {
-    if (state === "detected") {
+    const isDetected = state === "detected";
+    const currentlyActive = activeLimitationsTrackerRef.current[type];
+
+    // Deduplicate: If the state hasn't changed, ignore it
+    if (isDetected === currentlyActive) {
+      return;
+    }
+
+    // Update our tracker
+    activeLimitationsTrackerRef.current[type] = isDetected;
+
+    if (isDetected) {
       // Show popup only on the affected participant
       setActiveLimitations((prev) => ({ ...prev, [type]: true }));
+      sendQualityLimitationSlackAlert({ state, type });
 
       // Publish DEGRADE once (guard prevents duplicate publishes)
       if (!isDegradedQualityRef.current) {
@@ -249,9 +390,7 @@ export function MeetingContainer({
           isDegradedQualityRef.current = false; // allow retry
         }
       }
-    }
-
-    if (state === "resolved") {
+    } else {
       // Hide popup only on the affected participant
       setActiveLimitations((prev) => {
         const next = { ...prev, [type]: false };
@@ -272,9 +411,14 @@ export function MeetingContainer({
         }
         return next;
       });
+      sendQualityLimitationSlackAlert({ state, type });
     }
   }
 
+  /**
+   * Main setup hook for initializing the VideoSDK meeting entity.
+   * Registers listeners for meeting lifecycle and participant events.
+   */
   const mMeeting = useMeeting({
     onQualityLimitation: (option) => {
       handleQualityLimitation(option);

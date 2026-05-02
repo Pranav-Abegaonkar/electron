@@ -42,8 +42,9 @@
     "debug-brk": "electron --inspect-brk=5858 .",
     "dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
     "build": "react-scripts build",
-    "build-electron": "npm run build && electron-builder --mac",
-    "build-win": "electron-builder --win",
+    "build-electron": "npm run build && electron-builder --mac --publish never",
+    "build-win": "npm run build && electron-builder --win --publish never",
+    "build-all": "npm run build && electron-builder --mac --win --publish never",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -66,45 +67,55 @@
     ]
   },
   "build": {
-    "appId": "com.yourapp.app",
+    "appId": "com.tyho.app",
+    "productName": "TYHO",
     "extends": null,
     "npmRebuild": false,
+    "asar": true,
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "build"
     },
     "files": [
       "build/**/*",
       "electron.js",
-      "node_modules/**/*",
-      "!node_modules/canvas/**/*",
-      "!node_modules/canvas"
+      "!node_modules/**/*",
+      "!**/.DS_Store",
+      "!**/*.map"
     ],
+    "extraResources": [],
     "mac": {
       "category": "public.app-category.video",
       "hardenedRuntime": false,
+      "gatekeeperAssess": false,
       "entitlements": "entitlements.mac.plist",
       "entitlementsInherit": "entitlements.mac.plist",
       "extendInfo": {
         "NSCameraUsageDescription": "This app requires camera access for video calls.",
-        "NSMicrophoneUsageDescription": "This app requires microphone access for audio calls."
+        "NSMicrophoneUsageDescription": "This app requires microphone access for audio calls.",
+        "NSScreenCaptureUsageDescription": "This app requires screen recording access for screen sharing."
       },
       "target": [
         {
           "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
+          "arch": ["arm64", "x64"]
         }
       ]
     },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "contents": [
+        { "x": 130, "y": 220, "type": "file" },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ],
+      "window": { "width": 540, "height": 380 }
+    },
     "win": {
+      "requestedExecutionLevel": "requireAdministrator",
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
       ]
     },
@@ -112,8 +123,16 @@
       "oneClick": false,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TYHO",
+      "uninstallDisplayName": "TYHO",
       "deleteAppDataOnUninstall": true,
-      "perMachine": true
+      "perMachine": true,
+      "installerLanguages": ["en_US"],
+      "language": "1033",
+      "runAfterFinish": false,
+      "include": "installer.nsh"
     }
   }
 }

@@ -2,16 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- Required for Electron's V8 JIT compilation -->
   <key>com.apple.security.cs.allow-jit</key>
   <true/>
+  <!-- Required for Electron's unsafe memory usage -->
   <key>com.apple.security.cs.allow-unsafe-executable-memory</key>
   <true/>
+  <!-- Required for Electron's dyld environment variables -->
   <key>com.apple.security.cs.allow-dyld-environment-variables</key>
   <true/>
+  <!-- Required for unsigned / third-party native modules (e.g. VideoSDK) -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <!-- Camera access -->
   <key>com.apple.security.device.camera</key>
   <true/>
+  <!-- Microphone access -->
   <key>com.apple.security.device.audio-input</key>
   <true/>
+  <!-- Network access -->
   <key>com.apple.security.network.client</key>
   <true/>
   <key>com.apple.security.network.server</key>

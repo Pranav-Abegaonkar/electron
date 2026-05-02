@@ -4,6 +4,25 @@ const path = require("path");
 const isDev = !app.isPackaged;
 let mainWindow;
 
+// ── Single-instance lock (prevents ghost processes on Windows reinstall) ───────
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    // If someone tries to open a second instance, focus the existing window
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+// ── Windows: set App User Model ID for proper taskbar / Start-menu pinning ────
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.tyho.app");
+}
+
 // ── Set up Electron permission handler ────────────────────────────────────────
 // Must be called before createWindow so it's in place when the page loads.
 function setupPermissions() {

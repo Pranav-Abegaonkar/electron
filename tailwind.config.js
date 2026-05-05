@@ -19,6 +19,7 @@ module.exports = {
     },
     extend: {
       fontFamily: {
+        poppins: ["Poppins", "sans-serif"],
         lato: ["lato", "sans-serif"],
         sans: [
           "lato",

@@ -28,6 +28,7 @@ import MicDropUp from "../../components/MicDropUp";
 import CamDropUp from "../../components/CamDropUp";
 import useIsMobile from "../../hooks/useIsMobile";
 import useIsTab from "../../hooks/useIsTab";
+import VirtualBackgroundIcon from "../../icons/Bottombar/VirtualBackgroundIcon";
 
 // ─── Brand-styled icon button ─────────────────────────────────────────────────
 const BarBtn = React.memo(function BarBtn({
@@ -261,10 +262,10 @@ function RecordingBTN() {
 
   const tooltip =
     recordingState === Constants.recordingEvents.RECORDING_STARTED ? "Stop Recording" :
-    recordingState === Constants.recordingEvents.RECORDING_STARTING ? "Starting Recording" :
-    recordingState === Constants.recordingEvents.RECORDING_STOPPED ? "Start Recording" :
-    recordingState === Constants.recordingEvents.RECORDING_STOPPING ? "Stopping Recording" :
-    "Start Recording";
+      recordingState === Constants.recordingEvents.RECORDING_STARTING ? "Starting Recording" :
+        recordingState === Constants.recordingEvents.RECORDING_STOPPED ? "Start Recording" :
+          recordingState === Constants.recordingEvents.RECORDING_STOPPING ? "Stopping Recording" :
+            "Start Recording";
 
   return (
     <BarBtn
@@ -303,6 +304,22 @@ function ChatBTN() {
     />
   );
 }
+
+const VBBTN = ({ isMobile, isTab }) => {
+  const { sideBarMode, setSideBarMode } = useMeetingAppContext();
+  return (
+    <BarBtn
+      Icon={VirtualBackgroundIcon}
+      onClick={() => {
+        setSideBarMode((s) =>
+          s === sideBarModes.VIRTUALBACKGROUND ? null : sideBarModes.VIRTUALBACKGROUND
+        );
+      }}
+      active={sideBarMode === sideBarModes.VIRTUALBACKGROUND}
+      tooltip="Virtual Background"
+    />
+  );
+};
 
 // ─── Participants toggle (file-level) ─────────────────────────────────────────
 function ParticipantsBTN() {
@@ -403,6 +420,10 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
                         <ParticipantsBTN />
                         <p className="text-[10px] text-[#888888] font-poppins">Participants</p>
                       </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <VBBTN />
+                        <p className="text-[10px] text-[#888888] font-poppins">Virtual BG</p>
+                      </div>
                       <div className="col-span-3 flex items-center">
                         <MeetingIdCopyBTN />
                       </div>
@@ -427,6 +448,7 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
         <MicBTN />
         <WebCamBTN />
         <WhiteBoardBTN />
+        <VBBTN />
         <PipBTN />
         <LeaveBTN setIsMeetingLeft={setIsMeetingLeft} />
       </div>

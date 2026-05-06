@@ -1,4 +1,5 @@
-import { useContext, createContext, useState, useEffect, useRef } from "react";
+import { useContext, createContext, useState, useEffect, useRef, useMemo } from "react";
+import { VirtualBackgroundProcessor } from "@videosdk.live/videosdk-media-processor-web";
 
 export const MeetingAppContext = createContext();
 
@@ -16,6 +17,9 @@ export const MeetingAppProvider = ({ children }) => {
   const [reconnectingParticipants, setReconnectingParticipants] = useState([]); // Track reconnecting participants
   const [participantLeftModalData, setParticipantLeftModalData] = useState({ open: false, participantName: "" });
   const [whiteboardStarted, setWhiteboardStarted] = useState(false);
+  const [img, setImg] = useState([]);
+  const [type, setType] = useState([]);
+  const [isMirrorViewChecked, setIsMirrorViewChecked] = useState(true);
 
   const useRaisedHandParticipants = () => {
     const raisedHandsParticipantsRef = useRef();
@@ -66,6 +70,7 @@ export const MeetingAppProvider = ({ children }) => {
 
     return { participantRaisedHand };
   };
+  const videoProcessor = useMemo(() => new VirtualBackgroundProcessor(), []);
 
   return (
     <MeetingAppContext.Provider
@@ -83,6 +88,10 @@ export const MeetingAppProvider = ({ children }) => {
         reconnectingParticipants,
         participantLeftModalData,
         whiteboardStarted,
+        img,
+        type,
+        videoProcessor,
+        isMirrorViewChecked,
 
         // setters
 
@@ -98,6 +107,9 @@ export const MeetingAppProvider = ({ children }) => {
         setReconnectingParticipants,
         setParticipantLeftModalData,
         setWhiteboardStarted,
+        setImg,
+        setType,
+        setIsMirrorViewChecked,
       }}
     >
       {children}

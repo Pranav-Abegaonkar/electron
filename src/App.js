@@ -38,7 +38,7 @@ function App() {
 
           <MeetingProvider
             config={{
-              meetingId,
+              meetingId: "ozpf-0wot-ixn7",
               micEnabled: micOn,
               webcamEnabled: webcamOn,
               name: participantName ? participantName : "TestUser",

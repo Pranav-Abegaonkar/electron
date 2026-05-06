@@ -1,4 +1,5 @@
 import { Transition } from "@headlessui/react";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { Fragment } from "react";
 
 const getLimitationContent = (type) => {
@@ -24,7 +25,7 @@ const NetworkQualityPopup = ({ limitations }) => {
   const allTypes = ["bandwidth", "congestion", "cpu"];
 
   return (
-    <div className="fixed top-20 right-4 z-50 flex flex-col gap-3">
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-3">
       {allTypes.map((type) => {
         const isShow = !!(limitations && limitations[type]);
         const { title, message } = getLimitationContent(type);
@@ -33,7 +34,7 @@ const NetworkQualityPopup = ({ limitations }) => {
           <Transition
             key={type}
             show={isShow}
-            appear={true}
+            appear
             as={Fragment}
             enter="transform ease-out duration-300 transition"
             enterFrom="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
@@ -42,28 +43,14 @@ const NetworkQualityPopup = ({ limitations }) => {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="w-80 max-w-sm rounded-lg bg-gray-750 p-4 shadow-2xl border border-gray-600 ring-1 ring-black ring-opacity-5">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="mt-0.5 h-6 w-6 text-yellow-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="1.5"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
+            <div className="w-80 max-w-sm rounded-xl bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,0.12)] border border-[#EEEEEE]">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 mt-0.5">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-amber-500" />
                 </div>
-                <div className="ml-3 w-0 flex-1 pt-0.5">
-                  <p className="text-sm font-medium text-white">{title}</p>
-                  <p className="mt-1 text-sm text-[#9FA0A7] leading-tight">
-                    {message}
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#1B1C27] font-poppins">{title}</p>
+                  <p className="mt-0.5 text-xs text-[#888888] font-poppins leading-snug">{message}</p>
                 </div>
               </div>
             </div>

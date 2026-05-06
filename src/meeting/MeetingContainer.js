@@ -639,18 +639,18 @@ export function MeetingContainer({
 
   return (
     <div className="fixed inset-0">
-      <div ref={containerRef} className="h-full flex flex-col bg-gray-800">
+      <div ref={containerRef} className="h-full flex flex-col bg-[#1B1C27]">
         {typeof localParticipantAllowedJoin === "boolean" ? (
           localParticipantAllowedJoin ? (
             <>
               {isLocalReconnecting && (
-                <div className="absolute inset-0 z-50 bg-gray-800 flex flex-col items-center justify-center">
-                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white mb-4"></div>
+                <div className="absolute inset-0 z-50 bg-[#1B1C27] flex flex-col items-center justify-center font-poppins">
+                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#888CC4] mb-4"></div>
                   <h2 className="text-white text-xl font-semibold">Reconnecting...</h2>
-                  <p className="text-gray-400 mt-2">Please wait while we try to restore your connection.</p>
+                  <p className="text-[#9FA0B7] mt-2 text-sm">Please wait while we try to restore your connection.</p>
                 </div>
               )}
-              <div className={` flex flex-1 flex-row bg-gray-800 `}>
+              <div className={`flex flex-1 flex-row bg-[#1B1C27]`}>
 
                 {/* ── LEFT: main content ── */}
                 {whiteboardStarted ? (
@@ -707,8 +707,8 @@ export function MeetingContainer({
                     style={{
                       width: sideBarContainerWidth,
                       height: containerHeight - bottomBarHeight,
-                      backgroundColor: "#0d1117",
-                      borderLeft: "1px solid rgba(255,255,255,0.05)",
+                      backgroundColor: "#252636",
+                      borderLeft: "1px solid rgba(255,255,255,0.08)",
                       display: "flex",
                       flexDirection: "column",
                       flexShrink: 0,

@@ -1,6 +1,5 @@
 import { useMeeting, useParticipant, VideoPlayer } from "@videosdk.live/react-sdk";
-import { useEffect, useMemo, useRef } from "react";
-import ReactPlayer from "react-player";
+import { useEffect, useRef } from "react";
 import MicOffSmallIcon from "../icons/MicOffSmallIcon";
 import ScreenShareIcon from "../icons/ScreenShareIcon";
 import SpeakerIcon from "../icons/SpeakerIcon";
@@ -20,25 +19,15 @@ export function PresenterView({ height }) {
     isActiveSpeaker,
   } = useParticipant(presenterId);
 
-
   const audioPlayer = useRef();
 
   useEffect(() => {
-    if (
-      !isLocal &&
-      audioPlayer.current &&
-      screenShareOn &&
-      screenShareAudioStream
-    ) {
+    if (!isLocal && audioPlayer.current && screenShareOn && screenShareAudioStream) {
       const mediaStream = new MediaStream();
       mediaStream.addTrack(screenShareAudioStream.track);
-
       audioPlayer.current.srcObject = mediaStream;
       audioPlayer.current.play().catch((err) => {
-        if (
-          err.message ===
-          "play() failed because the user didn't interact with the document first. https://goo.gl/xX8pDD"
-        ) {
+        if (err.message === "play() failed because the user didn't interact with the document first. https://goo.gl/xX8pDD") {
           console.error("audio" + err.message);
         }
       });
@@ -49,84 +38,52 @@ export function PresenterView({ height }) {
 
   return (
     <div
-      className={` bg-gray-750 rounded m-2 relative overflow-hidden w-full h-[${height - "xl:p-6 lg:p-[52px] md:p-[26px] p-1"
-        }] `}
+      className="bg-[#252636] rounded-xl m-2 relative overflow-hidden w-full"
+      style={{ height }}
     >
       <audio autoPlay playsInline controls={false} ref={audioPlayer} />
-      <div className={"video-contain absolute h-full w-full"}>
-
+      <div className="video-contain absolute h-full w-full">
         <VideoPlayer
-          participantId={presenterId} // Required
-          type="share" // "video" or "share"
-          containerStyle={{
-            height: "100%",
-            width: "100%",
-          }}
+          participantId={presenterId}
+          type="share"
+          containerStyle={{ height: "100%", width: "100%" }}
           className="h-full"
           classNameVideo="h-full"
-          videoStyle={{
-            filter: isLocal ? "blur(1rem)" : undefined,
-          }}
+          videoStyle={{ filter: isLocal ? "blur(1rem)" : undefined }}
         />
 
         <div
-          className="bottom-2 left-2 bg-gray-750 p-2 absolute rounded-md flex items-center justify-center"
-          style={{
-            transition: "all 200ms",
-            transitionTimingFunction: "linear",
-          }}
+          className="bottom-2 left-2 bg-[#00000066] p-2 absolute rounded-lg flex items-center justify-center gap-1"
+          style={{ transition: "all 200ms", transitionTimingFunction: "linear" }}
         >
           {!micOn ? (
             <MicOffSmallIcon fillcolor="white" />
           ) : micOn && isActiveSpeaker ? (
             <SpeakerIcon />
-          ) : (
-            <></>
-          )}
-
-          <p className="text-sm text-white">
-            {isLocal
-              ? `You are presenting`
-              : `${nameTructed(displayName, 15)} is presenting`}
+          ) : null}
+          <p className="text-sm text-white font-poppins">
+            {isLocal ? "You are presenting" : `${nameTructed(displayName, 15)} is presenting`}
           </p>
         </div>
-        {isLocal ? (
+
+        {isLocal && (
           <>
-            <div className="p-10 rounded-2xl flex flex-col items-center justify-center absolute top-1/2 left-1/2 bg-gray-750 transform -translate-x-1/2 -translate-y-1/2">
-              <ScreenShareIcon
-                style={{ height: 48, width: 48, color: "white" }}
-              />
-              <div className="mt-4">
-                <p className="text-white text-xl font-semibold">
-                  You are presenting to everyone
-                </p>
-              </div>
-              <div className="mt-8">
-                <button
-                  className="bg-purple-550 text-white px-4 py-2 rounded text-sm text-center font-medium"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    mMeeting.toggleScreenShare();
-                  }}
-                >
-                  STOP PRESENTING
-                </button>
-              </div>
+            <div className="p-8 rounded-2xl flex flex-col items-center justify-center absolute top-1/2 left-1/2 bg-[#1B1C27] bg-opacity-90 transform -translate-x-1/2 -translate-y-1/2">
+              <ScreenShareIcon style={{ height: 48, width: 48, color: "#888CC4" }} />
+              <p className="text-white text-lg font-semibold font-poppins mt-4">
+                You are presenting to everyone
+              </p>
+              <button
+                className="mt-6 bg-[#888CC4] hover:bg-[#7a7eb5] text-white px-6 py-2 rounded-lg text-sm font-semibold font-poppins transition-colors"
+                onClick={(e) => { e.stopPropagation(); mMeeting.toggleScreenShare(); }}
+              >
+                Stop Presenting
+              </button>
             </div>
             <CornerDisplayName
-              {...{
-                isLocal,
-                displayName,
-                micOn,
-                webcamOn,
-                isPresenting: true,
-                participantId: presenterId,
-                isActiveSpeaker,
-              }}
+              {...{ isLocal, displayName, micOn, webcamOn, isPresenting: true, participantId: presenterId, isActiveSpeaker }}
             />
           </>
-        ) : (
-          <></>
         )}
       </div>
     </div>

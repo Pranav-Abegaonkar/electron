@@ -1,44 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
-import { MeetingDetailsScreen } from "../MeetingDetailsScreen";
-import { createMeeting, getToken, validateMeeting } from "../../api";
+import { getToken, validateMeeting, createMeeting } from "../../api";
 import ConfirmBox from "../ConfirmBox";
-import WebcamOffIcon from "../../icons/WebcamOffIcon";
-import WebcamOnIcon from "../../icons/Bottombar/WebcamOnIcon";
-import MicOffIcon from "../../icons/MicOffIcon";
-import MicOnIcon from "../../icons/Bottombar/MicOnIcon";
+import { ClipboardIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 import { Constants, useMediaDevice } from "@videosdk.live/react-sdk";
-import MicPermissionDenied from "../../icons/MicPermissionDenied";
-import CameraPermissionDenied from "../../icons/CameraPermissionDenied";
 import NetworkStats from "../NetworkStats";
-import DropDownCam from "../DropDownCam";
-import DropDownSpeaker from "../DropDownSpeaker";
-import DropDown from "../DropDown";
+import MicDropUp from "../MicDropUp";
+import CamDropUp from "../CamDropUp";
 import useMediaStream from "../../hooks/useMediaStream";
 import useIsMobile from "../../hooks/useIsMobile";
 import { useMeetingAppContext } from "../../MeetingAppContextDef";
 import PreCallReminderModal from "./PreCallReminderModal";
 
-// Defined outside to avoid re-creation on every render
-function MediaToggleButton({ onClick, onState, OnIcon, OffIcon }) {
-  const btnRef = useRef();
-  return (
-    <button
-      ref={btnRef}
-      onClick={onClick}
-      className={`w-12 h-12 flex items-center justify-center rounded-lg transition-colors border
-        ${onState
-          ? "bg-white border-[#888CC4]"
-          : "bg-red-500 border-red-500"
-        }`}
-    >
-      {onState
-        ? <OnIcon fillcolor="#1B1C27" />
-        : <OffIcon fillcolor="#fff" />
-      }
-    </button>
-  );
-}
 
 export function JoiningScreen({
   participantName,
@@ -86,9 +59,11 @@ export function JoiningScreen({
   const [videoTrack, setVideoTrack] = useState(null);
   const [dlgMuted, setDlgMuted] = useState(false);
   const [dlgDevices, setDlgDevices] = useState(false);
-  const [didDeviceChange, setDidDeviceChange] = useState(false);
-  const [testSpeaker, setTestSpeaker] = useState(false);
   const [hasSeenReminders, setHasSeenReminders] = useState(false);
+  const [localMeetingId, setLocalMeetingId] = useState("");
+  const [isCopied, setIsCopied] = useState(false);
+  // "idle" | "joining" | "creating"
+  const [status, setStatus] = useState("idle");
 
   const videoPlayerRef = useRef();
   const audioPlayerRef = useRef();
@@ -286,7 +261,6 @@ export function JoiningScreen({
   }
 
   function onDeviceChanged() {
-    setDidDeviceChange(true);
     getCameraDevices();
     getAudioDevices();
     getDefaultMediaTracks({ mic: micRef.current, webcam: webcamRef.current });
@@ -344,6 +318,49 @@ export function JoiningScreen({
     }
   };
 
+  const handleJoinSession = async () => {
+    if (!localMeetingId.trim() || status !== "idle") return;
+    setStatus("joining");
+    try {
+      const token = await getToken();
+      const { meetingId, err } = await validateMeeting({ roomId: localMeetingId.trim(), token });
+      if (meetingId === localMeetingId.trim()) {
+        setToken(token);
+        setMeetingId(meetingId);
+        onClickStartMeeting();
+      } else {
+        toast(String(err), { position: "bottom-left", autoClose: 4000, hideProgressBar: true, closeButton: false, theme: "light" });
+      }
+    } finally {
+      setStatus("idle");
+    }
+  };
+
+  // ─── TEST ONLY: remove handleCreateMeeting + button in JSX to disable ───
+  const handleCreateMeeting = async () => {
+    if (status !== "idle") return;
+    setStatus("creating");
+    try {
+      const token = await getToken();
+      const { meetingId, err } = await createMeeting({ token });
+      if (meetingId) setLocalMeetingId(meetingId);
+      else toast(String(err || "Failed to create meeting"), { position: "bottom-left", autoClose: 3000, theme: "light" });
+    } finally {
+      setStatus("idle");
+    }
+  };
+  // ─── END TEST ONLY ───
+
+  const DISPLAY_MEETING_ID = localMeetingId || "DUMMY MEETING ID";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(DISPLAY_MEETING_ID);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const canJoin = localMeetingId.trim().length > 0 && status === "idle";
+
   return (
     <>
       <div className="min-h-screen bg-[#F5F6FF] font-poppins flex flex-col overflow-y-auto">
@@ -354,149 +371,111 @@ export function JoiningScreen({
         <main className="flex-1 flex items-start justify-center px-4 md:px-8 lg:px-16 py-6">
           <div className="w-full max-w-6xl grid grid-cols-12 gap-4 lg:gap-8 items-start">
 
-            {/* Camera preview + device controls */}
+            {/* Left: camera preview + join controls */}
             <div className="col-span-12 md:col-span-7 flex flex-col gap-4">
+
+              {/* Camera preview */}
               <div
-                className="relative rounded-2xl overflow-hidden bg-[#1B1C27]"
+                className="relative rounded-2xl bg-[#1B1C27]"
                 style={{ height: isMobile ? "40vh" : "clamp(280px, 48vh, 460px)" }}
               >
                 <div className="absolute top-3 right-3 z-10">
                   <NetworkStats />
                 </div>
-
                 {isMobile && (
-                  <audio
-                    autoPlay
-                    playsInline
-                    muted={!testSpeaker}
-                    ref={audioPlayerRef}
-                    controls={false}
-                  />
+                  <audio autoPlay playsInline muted ref={audioPlayerRef} controls={false} />
                 )}
-
                 <video
-                  autoPlay
-                  playsInline
-                  muted
-                  ref={videoPlayerRef}
-                  controls={false}
+                  autoPlay playsInline muted ref={videoPlayerRef} controls={false}
                   style={{ transform: "scaleX(-1)", WebkitTransform: "scaleX(-1)" }}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover rounded-2xl"
                 />
-
-                <div className="absolute bottom-4 inset-x-0 flex justify-center gap-4">
-                  {isMicrophonePermissionAllowed ? (
-                    <MediaToggleButton
-                      onClick={_toggleMic}
-                      onState={micOn}
-                      OnIcon={MicOnIcon}
-                      OffIcon={MicOffIcon}
-                    />
-                  ) : (
-                    <MicPermissionDenied />
-                  )}
-                  {isCameraPermissionAllowed ? (
-                    <MediaToggleButton
-                      onClick={_toggleWebcam}
-                      onState={webcamOn}
-                      OnIcon={WebcamOnIcon}
-                      OffIcon={WebcamOffIcon}
-                    />
-                  ) : (
-                    <CameraPermissionDenied />
-                  )}
+                <div className="absolute bottom-4 inset-x-0 flex justify-center gap-3">
+                  <MicDropUp
+                    micOn={micOn} onToggle={_toggleMic}
+                    mics={mics} speakers={speakers} changeMic={changeMic}
+                    isMicrophonePermissionAllowed={isMicrophonePermissionAllowed}
+                  />
+                  <CamDropUp
+                    webcamOn={webcamOn} onToggle={_toggleWebcam}
+                    webcams={webcams} changeWebcam={changeWebcam}
+                    isCameraPermissionAllowed={isCameraPermissionAllowed}
+                  />
                 </div>
               </div>
 
-              <div className={`flex ${isMobile ? "flex-col" : "flex-row"} gap-3`}>
-                <div className={isMobile ? "w-full" : "flex-1"}>
-                  <DropDown
-                    mics={mics}
-                    changeMic={changeMic}
-                    customAudioStream={customAudioStream}
-                    audioTrack={audioTrack}
-                    micOn={micOn}
-                    didDeviceChange={didDeviceChange}
-                    setDidDeviceChange={setDidDeviceChange}
-                    testSpeaker={testSpeaker}
-                    setTestSpeaker={setTestSpeaker}
-                  />
-                </div>
-                {!isMobile && (
-                  <div className="flex-1">
-                    <DropDownSpeaker speakers={speakers} />
-                  </div>
-                )}
-                <div className={isMobile ? "w-full mt-1" : "flex-1"}>
-                  <DropDownCam changeWebcam={changeWebcam} webcams={webcams} />
+              {/* Join */}
+              <button
+                onClick={handleJoinSession}
+                disabled={!canJoin}
+                className={`w-full py-3 rounded-xl font-bold font-poppins text-base text-white transition-colors
+                  ${canJoin ? "bg-[#888CC4] hover:bg-[#7a7eb5]" : "bg-[#C5C8E3] cursor-not-allowed"}`}
+              >
+                {status === "joining" ? "Joining…" : "Join Session"}
+              </button>
+
+              {/* ─── TEST ONLY: delete this button to remove create-meeting ─── */}
+              <button
+                onClick={handleCreateMeeting}
+                disabled={status !== "idle"}
+                className="w-full py-2.5 rounded-xl border border-[#888CC4] text-[#888CC4] text-sm font-semibold font-poppins hover:bg-[#F5F6FF] transition-colors disabled:opacity-50"
+              >
+                {status === "creating" ? "Creating…" : "Create Test Meeting"}
+              </button>
+              {/* ─── END TEST ONLY ─── */}
+
+              {/* Session info card */}
+              <div className="bg-white border border-[#EEEEEE] rounded-2xl p-6 flex flex-col gap-4">
+                <p className="text-[#1B1C27] font-bold font-poppins text-base">
+                  6 Mar 2023, 06:00 PM – 07:00 PM
+                </p>
+                {/* Meeting ID / link row */}
+                <div className="bg-[#F5F5F5] border border-[#EEEEEE] rounded-lg flex items-center gap-2 px-4 py-3">
+                  <p
+                    className="flex-1 min-w-0 bg-transparent text-sm text-[#1B1C27] font-poppins outline-none truncate"
+                  >
+                    {DISPLAY_MEETING_ID}
+                  </p>
+                  <div className="w-px h-4 bg-[#EEEEEE] shrink-0" />
+                  <button
+                    onClick={handleCopy}
+                    className="shrink-0 text-[#888CC4] text-xs font-bold font-poppins transition-opacity"
+                  >
+                    {isCopied ? "Copied!" : "Copy"}
+                  </button>
+                  {isCopied
+                    ? <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
+                    : <ClipboardIcon className="w-4 h-4 text-[#888CC4] shrink-0" />
+                  }
                 </div>
               </div>
             </div>
 
-            {/* Info card + meeting details */}
-            <div className="col-span-12 md:col-span-5 flex flex-col gap-4 md:mt-0 mt-4">
-              <div className="bg-white border border-[#EEEEEE] rounded-2xl p-8 flex flex-col gap-4">
+            {/* Right: info card — matches video height */}
+            <div className="col-span-12 md:col-span-5 md:mt-0 mt-4">
+              <div
+                className="bg-white border border-[#EEEEEE] rounded-2xl p-8 flex flex-col gap-4 overflow-y-auto"
+                style={{ height: isMobile ? "auto" : "clamp(280px, 48vh, 460px)" }}
+              >
                 <div className="flex flex-col gap-3">
                   <p className="text-[#1B1C27] font-bold font-poppins text-base">
                     For the best experience, please:
                   </p>
                   <ul className="list-disc pl-6 text-[#1B1C27] font-poppins text-sm space-y-2">
                     <li>Use a Chrome browser on a laptop to attend your sessions.</li>
-                    <li>
-                      Check that you have a good internet connection, otherwise your video
-                      feed may be affected.
-                    </li>
+                    <li>Check that you have a good internet connection, otherwise your video feed may be affected.</li>
                   </ul>
                 </div>
                 <div className="flex flex-col gap-1">
                   <p className="text-[#1B1C27] font-bold font-poppins text-sm">Note:</p>
                   <p className="text-[#1B1C27] font-poppins text-sm">
-                    Screen sharing and virtual background have been disabled for all mobile
-                    devices (including tablets).
+                    Screen sharing and virtual background have been disabled for all mobile devices (including tablets).
                   </p>
                 </div>
-                <p className="text-[#1B1C27] font-poppins text-sm">
-                  Hope you have a great session.
-                </p>
+                <p className="text-[#1B1C27] font-poppins text-sm">Hope you have a great session.</p>
               </div>
-
-              <MeetingDetailsScreen
-                participantName={participantName}
-                setParticipantName={setParticipantName}
-                videoTrack={videoTrack}
-                setVideoTrack={setVideoTrack}
-                onClickStartMeeting={onClickStartMeeting}
-                onClickJoin={async (id) => {
-                  const token = await getToken();
-                  const { meetingId, err } = await validateMeeting({ roomId: id, token });
-                  if (meetingId === id) {
-                    setToken(token);
-                    setMeetingId(id);
-                    onClickStartMeeting();
-                  } else {
-                    toast(`${err}`, {
-                      position: "bottom-left",
-                      autoClose: 4000,
-                      hideProgressBar: true,
-                      closeButton: false,
-                      pauseOnHover: true,
-                      draggable: true,
-                      progress: undefined,
-                      theme: "light",
-                    });
-                  }
-                }}
-                _handleOnCreateMeeting={async () => {
-                  const token = await getToken();
-                  const { meetingId, err } = await createMeeting({ token });
-                  if (meetingId) {
-                    setToken(token);
-                    setMeetingId(meetingId);
-                  }
-                  return { meetingId, err };
-                }}
-              />
             </div>
+
           </div>
         </main>
       </div>

@@ -1,52 +1,27 @@
 import * as React from "react";
 
-const VirtualBackgroundIcon = (props) => (
-    <svg
-        width={24}
-        height={24}
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        {...props}
-    >
-        {/* Monitor / screen frame */}
-        <path
-            fillRule="evenodd"
-            clipRule="evenodd"
-            d="M2 4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2 0h16v13H4V4Z"
-            fill={props.fillcolor}
-        />
-        {/* Stand stem */}
-        <path
-            d="M10.5 19h3v2h-3v-2Z"
-            fill={props.fillcolor}
-        />
-        {/* Base */}
-        <path
-            d="M7.5 21a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 0 1H8a.5.5 0 0 1-.5-.5Z"
-            fill={props.fillcolor}
-        />
-        {/* Background image landscape — sky */}
-        <path
-            d="M4 4h16v8H4V4Z"
-            fill={props.fillcolor}
-            opacity={0.15}
-        />
-        {/* Sun */}
-        <circle cx="16" cy="7.5" r="1.5" fill={props.fillcolor} opacity={0.7} />
-        {/* Hills */}
-        <path
-            d="M4 12c2-3 4-3 6 0h10v5H4v-5Z"
-            fill={props.fillcolor}
-            opacity={0.35}
-        />
-        {/* Person silhouette - head */}
-        <circle cx="10" cy="8" r="1.5" fill={props.fillcolor} />
-        {/* Person silhouette - body */}
-        <path
-            d="M7.5 13c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5H7.5Z"
-            fill={props.fillcolor}
-        />
+// Sparkles / magic effects — clearly distinct from Whiteboard
+const VirtualBackgroundIcon = (props) => {
+  const c = props.fillcolor || props.color || "#fff";
+  return (
+    <svg width={24} height={24} fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      {/* Large sparkle */}
+      <path
+        d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
+        fill={c}
+      />
+      {/* Medium sparkle */}
+      <path
+        d="M18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"
+        fill={c}
+      />
+      {/* Small sparkle */}
+      <path
+        d="m16.894 20.567-.394 1.183-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"
+        fill={c}
+      />
     </svg>
-);
+  );
+};
 
 export default VirtualBackgroundIcon;

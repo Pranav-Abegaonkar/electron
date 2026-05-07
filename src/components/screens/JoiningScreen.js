@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { Fragment, useEffect, useRef, useState } from "react";
 import { getToken, validateMeeting, createMeeting } from "../../api";
 import ConfirmBox from "../ConfirmBox";
-import { ClipboardIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { ClipboardIcon, CheckIcon, SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Transition } from "@headlessui/react";
 import { toast } from "react-toastify";
 import { Constants, useMediaDevice } from "@videosdk.live/react-sdk";
 import NetworkStats from "../NetworkStats";
@@ -37,6 +38,7 @@ export function JoiningScreen({
     isMicrophonePermissionAllowed,
     setIsCameraPermissionAllowed,
     setIsMicrophonePermissionAllowed,
+    videoProcessor,
   } = useMeetingAppContext();
 
   const isMobile = useIsMobile();
@@ -64,6 +66,8 @@ export function JoiningScreen({
   const [isCopied, setIsCopied] = useState(false);
   // "idle" | "joining" | "creating"
   const [status, setStatus] = useState("idle");
+  const [showVBPanel, setShowVBPanel] = useState(false);
+  const [activeVBIndex, setActiveVBIndex] = useState(0);
 
   const videoPlayerRef = useRef();
   const audioPlayerRef = useRef();
@@ -149,9 +153,11 @@ export function JoiningScreen({
     if (webcamOn) {
       if (track) {
         track.stop();
+        if (videoProcessor?.processorRunning) videoProcessor.stop();
         setVideoTrack(null);
         setCustomVideoStream(null);
         setWebcamOn(false);
+        setActiveVBIndex(0);
       }
     } else {
       getDefaultMediaTracks({ mic: false, webcam: true });
@@ -351,6 +357,55 @@ export function JoiningScreen({
   };
   // ─── END TEST ONLY ───
 
+  const BASE_VB_URL = "https://cdn.videosdk.live/virtual-background";
+  const backgroundImageArr = [
+    { previewImageUrl: `${BASE_VB_URL}/webcam-no-filter-preview.png`, type: "DEFAULT" },
+    { previewImageUrl: `${BASE_VB_URL}/webcam-blur-preview.png`, type: "blur" },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/san-fran-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/san-fran.jpeg` },
+    { previewImageUrl: `${BASE_VB_URL}/hill-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/hill.jpeg`, type: "image" },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/cloud-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/cloud.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/beach-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/beach.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/white-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/white-wall.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/wall-with-pot-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/wall-with-pot.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/window-conference-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/window-conference.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/sky-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/sky.jpeg` },
+    { previewImageUrl: `${BASE_VB_URL}/red-mix-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/red-mix.jpeg`, type: "image" },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/blue-mix-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/blue-mix.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/coffe-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/coffe-wall.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/paper-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/paper-wall.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/design-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/design-wall.jpeg` },
+  ];
+
+  const handleSelectBackground = async ({ type, backgroudImageUrl }, index) => {
+    if (!videoProcessor) return;
+    if (!videoProcessor.ready) await videoProcessor.init();
+
+    if (type === "DEFAULT") {
+      if (videoProcessor.processorRunning) videoProcessor.stop();
+      const rawStream = await getVideoTrack({ webcamId: selectedWebcam?.id });
+      setCustomVideoStream(rawStream);
+      const [track] = rawStream.getVideoTracks();
+      setVideoTrack(track || null);
+      setActiveVBIndex(0);
+      return;
+    }
+
+    try {
+      if (videoProcessor.processorRunning) {
+        videoProcessor.updateProcessorConfig({ type, imageUrl: backgroudImageUrl });
+      } else {
+        const rawStream = await getVideoTrack({ webcamId: selectedWebcam?.id });
+        const processed = await videoProcessor.start(rawStream, { type, imageUrl: backgroudImageUrl });
+        setCustomVideoStream(processed);
+        const [track] = processed.getVideoTracks();
+        setVideoTrack(track || null);
+      }
+      setActiveVBIndex(index);
+    } catch (err) {
+      console.log("VB error:", err);
+    }
+  };
+
   const DISPLAY_MEETING_ID = localMeetingId || "DUMMY MEETING ID";
 
   const handleCopy = () => {
@@ -390,7 +445,7 @@ export function JoiningScreen({
                   style={{ transform: "scaleX(-1)", WebkitTransform: "scaleX(-1)" }}
                   className="h-full w-full object-cover rounded-2xl"
                 />
-                <div className="absolute bottom-4 inset-x-0 flex justify-center gap-3">
+                <div className="absolute bottom-4 inset-x-0 flex justify-center gap-3 z-10">
                   <MicDropUp
                     micOn={micOn} onToggle={_toggleMic}
                     mics={mics} speakers={speakers} changeMic={changeMic}
@@ -401,7 +456,79 @@ export function JoiningScreen({
                     webcams={webcams} changeWebcam={changeWebcam}
                     isCameraPermissionAllowed={isCameraPermissionAllowed}
                   />
+                  {/* Virtual Background button — desktop only */}
+                  {!isMobile && (
+                    <button
+                      onClick={() => setShowVBPanel((p) => !p)}
+                      title="Virtual Background"
+                      className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors
+                        ${showVBPanel || activeVBIndex !== 0
+                          ? "bg-[#888CC4] border-[#888CC4] text-white"
+                          : "bg-white/20 border-white/30 text-white backdrop-blur-sm hover:bg-white/30"
+                        }`}
+                    >
+                      <SparklesIcon className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
+
+                {/* Virtual Background panel — overlays the camera preview */}
+                {!isMobile && (
+                  <Transition
+                    show={showVBPanel}
+                    as={Fragment}
+                    enter="transition ease-out duration-200"
+                    enterFrom="opacity-0 scale-95"
+                    enterTo="opacity-100 scale-100"
+                    leave="transition ease-in duration-150"
+                    leaveFrom="opacity-100 scale-100"
+                    leaveTo="opacity-0 scale-95"
+                  >
+                    <div className="absolute inset-0 z-20 rounded-2xl overflow-hidden bg-[#1B1C27]/90 backdrop-blur-sm flex flex-col">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-[#3D3E50]">
+                        <div className="flex items-center gap-2">
+                          <SparklesIcon className="w-4 h-4 text-[#888CC4]" />
+                          <span className="text-white font-poppins font-semibold text-sm">Virtual Background</span>
+                        </div>
+                        <button
+                          onClick={() => setShowVBPanel(false)}
+                          className="text-white/60 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Background grid */}
+                      <div className="flex-1 overflow-y-auto p-3">
+                        <div className="grid grid-cols-3 gap-2">
+                          {backgroundImageArr.map(({ previewImageUrl, backgroudImageUrl, type }, i) => (
+                            <button
+                              key={i}
+                              onClick={() => handleSelectBackground({ type, backgroudImageUrl }, i)}
+                              className={`relative aspect-video rounded-lg overflow-hidden transition-all
+                                ${activeVBIndex === i
+                                  ? "ring-2 ring-[#888CC4] ring-offset-1 ring-offset-[#1B1C27]"
+                                  : "opacity-75 hover:opacity-100"
+                                }`}
+                            >
+                              <img
+                                src={previewImageUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                              {activeVBIndex === i && (
+                                <div className="absolute inset-0 bg-[#888CC4]/25 flex items-center justify-center">
+                                  <CheckIcon className="w-4 h-4 text-white drop-shadow" />
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </Transition>
+                )}
               </div>
 
               {/* Join */}

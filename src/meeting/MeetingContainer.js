@@ -457,16 +457,6 @@ export function MeetingContainer({
         _handleMeetingLeft();
       }
 
-      toast(`Meeting is in ${state} state`, {
-        position: "bottom-left",
-        autoClose: 4000,
-        hideProgressBar: true,
-        closeButton: false,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "light",
-      });
     },
     onMeetingLeft,
     onError: _handleOnError,

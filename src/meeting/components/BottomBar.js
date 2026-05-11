@@ -18,7 +18,6 @@ import ChatIcon from "../../icons/Bottombar/ChatIcon";
 import ParticipantsIcon from "../../icons/Bottombar/ParticipantsIcon";
 import EndIcon from "../../icons/Bottombar/EndIcon";
 import RaiseHandIcon from "../../icons/Bottombar/RaiseHandIcon";
-import PipIcon from "../../icons/Bottombar/PipIcon";
 import WhiteboardIcon from "../../icons/Bottombar/WhiteboardIcon";
 import { sideBarModes } from "../../utils/common";
 import { Dialog, Transition } from "@headlessui/react";
@@ -88,67 +87,6 @@ const BarBtn = React.memo(function BarBtn({
   );
 });
 
-// ─── PiP button (file-level — stable identity) ────────────────────────────────
-function PipBTN() {
-  const { pipMode, setPipMode } = useMeetingAppContext();
-  const pipWindowRef = useRef(null);
-
-  const getRowCount = (len) => (len > 2 ? 2 : len > 0 ? 1 : 0);
-  const getColCount = (len) => (len < 2 ? 1 : len < 5 ? 2 : 3);
-
-  const togglePipMode = async () => {
-    if (pipWindowRef.current) {
-      await document.exitPictureInPicture();
-      pipWindowRef.current = null;
-      return;
-    }
-    if (!("pictureInPictureEnabled" in document)) {
-      alert("PIP is not supported by your browser");
-      return;
-    }
-    const source = document.createElement("canvas");
-    const ctx = source.getContext("2d");
-    const pipVideo = document.createElement("video");
-    pipWindowRef.current = pipVideo;
-    pipVideo.autoplay = true;
-    pipVideo.srcObject = source.captureStream();
-    drawCanvas();
-    pipVideo.onloadedmetadata = () => pipVideo.requestPictureInPicture();
-    await pipVideo.play();
-    pipVideo.addEventListener("enterpictureinpicture", () => { drawCanvas(); setPipMode(true); });
-    pipVideo.addEventListener("leavepictureinpicture", () => {
-      pipWindowRef.current = null;
-      setPipMode(false);
-      pipVideo.srcObject.getTracks().forEach((t) => t.stop());
-    });
-    function drawCanvas() {
-      const videos = document.querySelectorAll("video");
-      try {
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, source.width, source.height);
-        const rows = getRowCount(videos.length);
-        const cols = getColCount(videos.length);
-        for (let i = 0; i < rows; i++) {
-          for (let j = 0; j < cols; j++) {
-            if (j + i * cols <= videos.length || videos.length === 1) {
-              ctx.drawImage(
-                videos[j + i * cols],
-                j < 1 ? 0 : source.width / (cols / j),
-                i < 1 ? 0 : source.height / (rows / i),
-                source.width / cols,
-                source.height / rows
-              );
-            }
-          }
-        }
-      } catch (e) { console.log(e); }
-      if (document.pictureInPictureElement === pipVideo) requestAnimationFrame(drawCanvas);
-    }
-  };
-
-  return <BarBtn Icon={PipIcon} onClick={togglePipMode} active={pipMode} tooltip={pipMode ? "Stop PiP" : "Start PiP"} />;
-}
-
 // ─── Mic split-button (file-level) ────────────────────────────────────────────
 function MicBTN() {
   const { isMicrophonePermissionAllowed } = useMeetingAppContext();
@@ -164,7 +102,7 @@ function MicBTN() {
     if (m?.length) setMics(m);
     if (s?.length) setSpeakers(s);
   };
-
+  // eslint-disable-next-line
   useEffect(() => { loadDevices(); }, []);
 
   return (
@@ -190,6 +128,7 @@ function WebCamBTN() {
 
   useEffect(() => {
     getCameras().then((cams) => { if (cams?.length) setWebcams(cams); });
+    // eslint-disable-next-line
   }, []);
 
   return (
@@ -409,10 +348,6 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
                         <p className="text-[10px] text-[#888888] font-poppins">Whiteboard</p>
                       </div>
                       <div className="flex flex-col items-center gap-1.5">
-                        <PipBTN />
-                        <p className="text-[10px] text-[#888888] font-poppins">PiP</p>
-                      </div>
-                      <div className="flex flex-col items-center gap-1.5">
                         <ChatBTN />
                         <p className="text-[10px] text-[#888888] font-poppins">Chat</p>
                       </div>
@@ -449,7 +384,6 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
         <WebCamBTN />
         <WhiteBoardBTN />
         <VBBTN />
-        <PipBTN />
         <LeaveBTN setIsMeetingLeft={setIsMeetingLeft} />
       </div>
       <div className="flex items-center gap-2">

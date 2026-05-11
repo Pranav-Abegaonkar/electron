@@ -2,6 +2,7 @@ import { MeetingProvider } from "@videosdk.live/react-sdk";
 // setLogLevel, Constants
 import { useEffect } from "react";
 import { useState } from "react";
+import { getToken } from "./api";
 import { MeetingAppProvider } from "./MeetingAppContextDef";
 import { MeetingContainer } from "./meeting/MeetingContainer";
 import { LeaveScreen } from "./components/screens/LeaveScreen";
@@ -9,7 +10,8 @@ import { JoiningScreen } from "./components/screens/JoiningScreen"
 
 function App() {
   // setLogLevel(Constants.LogLevel.ALL);
-  const [token, setToken] = useState("");
+  const tokenFromApi = getToken();
+  const [token, setToken] = useState(tokenFromApi);
   const [meetingId, setMeetingId] = useState("");
   const [participantName, setParticipantName] = useState("");
   const [micOn, setMicOn] = useState(false);

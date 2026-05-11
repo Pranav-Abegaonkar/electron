@@ -14,7 +14,7 @@ import { useMediaQuery } from "react-responsive";
 import { toast } from "react-toastify";
 import { useMeetingAppContext } from "../MeetingAppContextDef";
 import ParticipantLeftModal from "../components/ParticipantLeftModal";
-import MemoizedWhiteboard, { convertHWAspectRatio } from "../components/whiteboard/WhiteboardContainer";
+import MemoizedWhiteboard from "../components/whiteboard/WhiteboardContainer";
 import { ParticipantView } from "../components/ParticipantView";
 import useMediaStream from "../hooks/useMediaStream";
 
@@ -38,7 +38,6 @@ export function MeetingContainer({
     setWhiteboardStarted,
     sideBarMode,
     setSideBarMode,
-    setPipMode,
     setRaisedHandsParticipants,
   } = useMeetingAppContext();
 
@@ -60,6 +59,7 @@ export function MeetingContainer({
         audioElement.play();
 
       }
+      // eslint-disable-next-line
     }, [micStream, participantId]);
 
     return null;
@@ -308,11 +308,10 @@ export function MeetingContainer({
     setSelectedMic({ id: null, label: null });
     setSelectedWebcam({ id: null, label: null });
     setSelectedSpeaker({ id: null, label: null });
-    
+
     // Reset global meeting context states so they don't leak into the next meeting
     setWhiteboardStarted(false);
     setSideBarMode(null);
-    setPipMode(false);
     setRaisedHandsParticipants([]);
     setReconnectingParticipants([]);
     setParticipantLeftModalData({ open: false, participantName: "" });
@@ -466,7 +465,6 @@ export function MeetingContainer({
   const isPresenting = mMeeting.presenterId ? true : false;
 
   // ─── WB layout constants ──────────────────────────────────────────────────
-  const WB_TOOLBAR_WIDTH = 48;
   const WB_SPACING = 8;
 
   const { publish: publishWBControl } = usePubSub("WB_CONTROL", {

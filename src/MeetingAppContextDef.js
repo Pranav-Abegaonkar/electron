@@ -13,7 +13,6 @@ export const MeetingAppProvider = ({ children }) => {
   const [isMicrophonePermissionAllowed, setIsMicrophonePermissionAllowed] = useState(null);
   const [raisedHandsParticipants, setRaisedHandsParticipants] = useState([]);
   const [sideBarMode, setSideBarMode] = useState(null);
-  const [pipMode, setPipMode] = useState(false);
   const [reconnectingParticipants, setReconnectingParticipants] = useState([]); // Track reconnecting participants
   const [participantLeftModalData, setParticipantLeftModalData] = useState({ open: false, participantName: "" });
   const [whiteboardStarted, setWhiteboardStarted] = useState(false);
@@ -44,6 +43,7 @@ export const MeetingAppProvider = ({ children }) => {
 
     useEffect(() => {
       raisedHandsParticipantsRef.current = raisedHandsParticipants;
+      // eslint-disable-next-line
     }, [raisedHandsParticipants]);
 
     const _handleRemoveOld = () => {
@@ -82,7 +82,6 @@ export const MeetingAppProvider = ({ children }) => {
         selectedWebcam,
         selectedSpeaker,
         sideBarMode,
-        pipMode,
         isCameraPermissionAllowed,
         isMicrophonePermissionAllowed,
         reconnectingParticipants,
@@ -100,7 +99,6 @@ export const MeetingAppProvider = ({ children }) => {
         setSelectedWebcam,
         setSelectedSpeaker,
         setSideBarMode,
-        setPipMode,
         useRaisedHandParticipants,
         setIsCameraPermissionAllowed,
         setIsMicrophonePermissionAllowed,

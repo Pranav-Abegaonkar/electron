@@ -50,9 +50,8 @@ export default function CamDropUp({
                     className="w-full flex items-center gap-2 px-4 py-2 hover:bg-[#F5F6FF] text-sm text-[#1B1C27] font-poppins text-left transition-colors"
                   >
                     <CheckIcon
-                      className={`w-4 h-4 shrink-0 text-[#888CC4] ${
-                        selectedWebcam?.id === cam.deviceId ? "opacity-100" : "opacity-0"
-                      }`}
+                      className={`w-4 h-4 shrink-0 text-[#888CC4] ${selectedWebcam?.id === cam.deviceId ? "opacity-100" : "opacity-0"
+                        }`}
                     />
                     <span className="truncate">{cam.label || `Camera ${cam.deviceId}`}</span>
                   </button>
@@ -63,14 +62,13 @@ export default function CamDropUp({
 
           {/* Split button */}
           <div
-            className={`flex items-center rounded-lg overflow-hidden border transition-colors ${
-              webcamOn ? "bg-white border-[#888CC4]" : "bg-red-500 border-red-500"
-            }`}
+            className={`flex items-center rounded-lg overflow-hidden border transition-colors ${webcamOn ? "bg-white border-[#888CC4]" : "bg-red-500 border-red-500"
+              }`}
           >
             {/* Toggle half */}
             <button
               onClick={onToggle}
-              className="p-3 flex items-center justify-center"
+              className="p-2 flex items-center justify-center"
               aria-label={webcamOn ? "Turn off camera" : "Turn on camera"}
             >
               {webcamOn ? <WebcamOnIcon fillcolor="#1B1C27" /> : <WebcamOffIcon fillcolor="#fff" />}
@@ -82,9 +80,8 @@ export default function CamDropUp({
               aria-label="Select camera"
             >
               <ChevronDownIcon
-                className={`w-3.5 h-3.5 transition-transform ${
-                  open ? "rotate-180" : ""
-                } ${webcamOn ? "text-[#888CC4]" : "text-red-200"}`}
+                className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""
+                  } ${webcamOn ? "text-[#888CC4]" : "text-red-200"}`}
               />
             </Popover.Button>
           </div>

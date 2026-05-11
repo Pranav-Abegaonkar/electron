@@ -54,9 +54,8 @@ export default function MicDropUp({
                         className="w-full flex items-center gap-2 px-4 py-2 hover:bg-[#F5F6FF] text-sm text-[#1B1C27] font-poppins text-left transition-colors"
                       >
                         <CheckIcon
-                          className={`w-4 h-4 shrink-0 text-[#888CC4] ${
-                            selectedMic?.id === mic.deviceId ? "opacity-100" : "opacity-0"
-                          }`}
+                          className={`w-4 h-4 shrink-0 text-[#888CC4] ${selectedMic?.id === mic.deviceId ? "opacity-100" : "opacity-0"
+                            }`}
                         />
                         <span className="truncate">{mic.label || `Microphone ${mic.deviceId}`}</span>
                       </button>
@@ -79,9 +78,8 @@ export default function MicDropUp({
                         className="w-full flex items-center gap-2 px-4 py-2 hover:bg-[#F5F6FF] text-sm text-[#1B1C27] font-poppins text-left transition-colors"
                       >
                         <CheckIcon
-                          className={`w-4 h-4 shrink-0 text-[#888CC4] ${
-                            selectedSpeaker?.id === spk.deviceId ? "opacity-100" : "opacity-0"
-                          }`}
+                          className={`w-4 h-4 shrink-0 text-[#888CC4] ${selectedSpeaker?.id === spk.deviceId ? "opacity-100" : "opacity-0"
+                            }`}
                         />
                         <span className="truncate">{spk.label || `Speaker ${spk.deviceId}`}</span>
                       </button>
@@ -94,14 +92,13 @@ export default function MicDropUp({
 
           {/* Split button */}
           <div
-            className={`flex items-center rounded-lg overflow-hidden border transition-colors ${
-              micOn ? "bg-white border-[#888CC4]" : "bg-red-500 border-red-500"
-            }`}
+            className={`flex items-center rounded-lg overflow-hidden border transition-colors ${micOn ? "bg-white border-[#888CC4]" : "bg-red-500 border-red-500"
+              }`}
           >
             {/* Toggle half */}
             <button
               onClick={onToggle}
-              className="p-3 flex items-center justify-center"
+              className="p-2 flex items-center justify-center"
               aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
             >
               {micOn ? <MicOnIcon fillcolor="#1B1C27" /> : <MicOffIcon fillcolor="#fff" />}
@@ -113,9 +110,8 @@ export default function MicDropUp({
               aria-label="Select microphone"
             >
               <ChevronDownIcon
-                className={`w-3.5 h-3.5 transition-transform ${
-                  open ? "rotate-180" : ""
-                } ${micOn ? "text-[#888CC4]" : "text-red-200"}`}
+                className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""
+                  } ${micOn ? "text-[#888CC4]" : "text-red-200"}`}
               />
             </Popover.Button>
           </div>

@@ -61,15 +61,13 @@ export default function VBDropUp({
 
           {/* Main button */}
           <Popover.Button
-            className={`flex items-center rounded-lg overflow-hidden border transition-colors focus:outline-none ${
-              vbOn ? "bg-white border-[#888CC4]" : "bg-white border-[#EEEEEE]"
-            }`}
+            className={`flex items-center rounded-lg overflow-hidden border transition-colors focus:outline-none ${vbOn ? "bg-white border-[#888CC4]" : "bg-white border-[#EEEEEE]"
+              }`}
             aria-label="Select virtual background"
           >
-            <div className="p-3 flex items-center justify-center">
+            <div className="p-2 flex items-center justify-center">
               <VirtualBackgroundIcon fillcolor="#1B1C27" />
             </div>
-            <div className="px-1.5 py-3 flex items-center justify-center"></div>
           </Popover.Button>
         </>
       )}

@@ -52,7 +52,7 @@ const BarBtn = React.memo(function BarBtn({
       onClick={onClick}
       disabled={disabled}
       title={tooltip}
-      className={`relative flex items-center justify-center p-2.5 rounded-lg border transition-colors
+      className={`relative flex items-center justify-center p-2.5 rounded-lg border transition-colors 
         ${danger
           ? "bg-red-500 hover:bg-red-600 border-red-500"
           : active

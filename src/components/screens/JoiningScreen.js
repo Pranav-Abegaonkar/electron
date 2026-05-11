@@ -1,13 +1,13 @@
 import React, { Fragment, useEffect, useRef, useState } from "react";
 import { getToken, validateMeeting, createMeeting } from "../../api";
 import ConfirmBox from "../ConfirmBox";
-import { ClipboardIcon, CheckIcon, SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Transition } from "@headlessui/react";
+import { ClipboardIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 import { Constants, useMediaDevice } from "@videosdk.live/react-sdk";
 import NetworkStats from "../NetworkStats";
 import MicDropUp from "../MicDropUp";
 import CamDropUp from "../CamDropUp";
+import VBDropUp from "../VBDropUp";
 import useMediaStream from "../../hooks/useMediaStream";
 import useIsMobile from "../../hooks/useIsMobile";
 import { useMeetingAppContext } from "../../MeetingAppContextDef";
@@ -66,7 +66,6 @@ export function JoiningScreen({
   const [isCopied, setIsCopied] = useState(false);
   // "idle" | "joining" | "creating"
   const [status, setStatus] = useState("idle");
-  const [showVBPanel, setShowVBPanel] = useState(false);
   const [activeVBIndex, setActiveVBIndex] = useState(0);
 
   const videoPlayerRef = useRef();
@@ -458,77 +457,18 @@ export function JoiningScreen({
                   />
                   {/* Virtual Background button — desktop only */}
                   {!isMobile && (
-                    <button
-                      onClick={() => setShowVBPanel((p) => !p)}
-                      title="Virtual Background"
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors
-                        ${showVBPanel || activeVBIndex !== 0
-                          ? "bg-[#888CC4] border-[#888CC4] text-white"
-                          : "bg-white/20 border-white/30 text-white backdrop-blur-sm hover:bg-white/30"
-                        }`}
-                    >
-                      <SparklesIcon className="w-5 h-5" />
-                    </button>
+                    <VBDropUp
+                      vbOn={activeVBIndex !== 0}
+                      onToggle={() => {
+                        if (activeVBIndex !== 0) handleSelectBackground({ type: "DEFAULT" }, 0);
+                        else handleSelectBackground(backgroundImageArr[1], 1);
+                      }}
+                      backgroundImages={backgroundImageArr}
+                      activeVBIndex={activeVBIndex}
+                      handleSelectBackground={handleSelectBackground}
+                    />
                   )}
                 </div>
-
-                {/* Virtual Background panel — overlays the camera preview */}
-                {!isMobile && (
-                  <Transition
-                    show={showVBPanel}
-                    as={Fragment}
-                    enter="transition ease-out duration-200"
-                    enterFrom="opacity-0 scale-95"
-                    enterTo="opacity-100 scale-100"
-                    leave="transition ease-in duration-150"
-                    leaveFrom="opacity-100 scale-100"
-                    leaveTo="opacity-0 scale-95"
-                  >
-                    <div className="absolute inset-0 z-20 rounded-2xl overflow-hidden bg-[#1B1C27]/90 backdrop-blur-sm flex flex-col">
-                      {/* Header */}
-                      <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-[#3D3E50]">
-                        <div className="flex items-center gap-2">
-                          <SparklesIcon className="w-4 h-4 text-[#888CC4]" />
-                          <span className="text-white font-poppins font-semibold text-sm">Virtual Background</span>
-                        </div>
-                        <button
-                          onClick={() => setShowVBPanel(false)}
-                          className="text-white/60 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-                        >
-                          <XMarkIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      {/* Background grid */}
-                      <div className="flex-1 overflow-y-auto p-3">
-                        <div className="grid grid-cols-3 gap-2">
-                          {backgroundImageArr.map(({ previewImageUrl, backgroudImageUrl, type }, i) => (
-                            <button
-                              key={i}
-                              onClick={() => handleSelectBackground({ type, backgroudImageUrl }, i)}
-                              className={`relative aspect-video rounded-lg overflow-hidden transition-all
-                                ${activeVBIndex === i
-                                  ? "ring-2 ring-[#888CC4] ring-offset-1 ring-offset-[#1B1C27]"
-                                  : "opacity-75 hover:opacity-100"
-                                }`}
-                            >
-                              <img
-                                src={previewImageUrl}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                              {activeVBIndex === i && (
-                                <div className="absolute inset-0 bg-[#888CC4]/25 flex items-center justify-center">
-                                  <CheckIcon className="w-4 h-4 text-white drop-shadow" />
-                                </div>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </Transition>
-                )}
               </div>
 
               {/* Join */}

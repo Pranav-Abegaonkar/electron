@@ -3,6 +3,7 @@ import {
   useMeeting,
   usePubSub,
   useMediaDevice,
+  createCameraVideoTrack,
 } from "@videosdk.live/react-sdk";
 import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -25,9 +26,9 @@ import { useMeetingAppContext } from "../../MeetingAppContextDef";
 import useMediaStream from "../../hooks/useMediaStream";
 import MicDropUp from "../../components/MicDropUp";
 import CamDropUp from "../../components/CamDropUp";
+import VBDropUp from "../../components/VBDropUp";
 import useIsMobile from "../../hooks/useIsMobile";
 import useIsTab from "../../hooks/useIsTab";
-import VirtualBackgroundIcon from "../../icons/Bottombar/VirtualBackgroundIcon";
 
 // ─── Brand-styled icon button ─────────────────────────────────────────────────
 const BarBtn = React.memo(function BarBtn({
@@ -244,21 +245,99 @@ function ChatBTN() {
   );
 }
 
-const VBBTN = ({ isMobile, isTab }) => {
-  const { sideBarMode, setSideBarMode } = useMeetingAppContext();
+const BASE_VB_URL = "https://cdn.videosdk.live/virtual-background";
+const backgroundImageArr = [
+  { previewImageUrl: `${BASE_VB_URL}/webcam-no-filter-preview.png`, type: "DEFAULT" },
+  { previewImageUrl: `${BASE_VB_URL}/webcam-blur-preview.png`, type: "blur" },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/san-fran-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/san-fran.jpeg` },
+  { previewImageUrl: `${BASE_VB_URL}/hill-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/hill.jpeg`, type: "image" },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/cloud-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/cloud.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/beach-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/beach.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/white-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/white-wall.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/wall-with-pot-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/wall-with-pot.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/window-conference-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/window-conference.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/sky-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/sky.jpeg` },
+  { previewImageUrl: `${BASE_VB_URL}/red-mix-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/red-mix.jpeg`, type: "image" },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/blue-mix-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/blue-mix.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/coffe-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/coffe-wall.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/paper-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/paper-wall.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/design-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/design-wall.jpeg` },
+];
+
+function VBBTN() {
+  const { videoProcessor, selectedWebcam, type, setType, img, setImg } = useMeetingAppContext();
+  const mMeeting = useMeeting();
+  const changeWebcam = mMeeting?.changeWebcam;
+  const localWebcamOn = mMeeting?.localWebcamOn;
+  const localMicOn = mMeeting?.localMicOn;
+
+  let activeVBIndex = 0;
+  if (type === "blur") activeVBIndex = 1;
+  else if (type === "image") {
+    const idx = backgroundImageArr.findIndex((b) => b.backgroudImageUrl === img);
+    if (idx !== -1) activeVBIndex = idx;
+  }
+
+  const handleSelectBackground = async ({ type: newType, backgroudImageUrl }, index) => {
+    setImg(backgroudImageUrl || null);
+    setType(newType);
+
+    if (!videoProcessor.ready) {
+      await videoProcessor.init();
+    }
+
+    const stream = await createCameraVideoTrack({
+      cameraId: selectedWebcam?.id,
+      encoderConfig: localMicOn ? "h720p_w1280p" : "h360p_w640p",
+      multiStream: false,
+    });
+
+    if (newType === "DEFAULT") {
+      try {
+        if (videoProcessor.processorRunning || !localWebcamOn) {
+          videoProcessor.stop();
+          changeWebcam(stream);
+        }
+        return;
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    if (!videoProcessor.processorRunning) {
+      try {
+        const processedStream = await videoProcessor.start(stream, {
+          type: newType,
+          imageUrl: backgroudImageUrl,
+        });
+        changeWebcam(processedStream);
+      } catch (error) {
+        console.log(error);
+      }
+    } else {
+      videoProcessor.updateProcessorConfig({ type: newType, imageUrl: backgroudImageUrl });
+    }
+  };
+
+  const _toggleVB = () => {
+    if (activeVBIndex !== 0) {
+      handleSelectBackground({ type: "DEFAULT" }, 0);
+    } else {
+      handleSelectBackground(backgroundImageArr[1], 1);
+    }
+  };
+
   return (
-    <BarBtn
-      Icon={VirtualBackgroundIcon}
-      onClick={() => {
-        setSideBarMode((s) =>
-          s === sideBarModes.VIRTUALBACKGROUND ? null : sideBarModes.VIRTUALBACKGROUND
-        );
-      }}
-      active={sideBarMode === sideBarModes.VIRTUALBACKGROUND}
-      tooltip="Virtual Background"
+    <VBDropUp
+      vbOn={activeVBIndex !== 0}
+      onToggle={_toggleVB}
+      backgroundImages={backgroundImageArr}
+      activeVBIndex={activeVBIndex}
+      handleSelectBackground={handleSelectBackground}
+      openUpward
     />
   );
-};
+}
 
 // ─── Participants toggle (file-level) ─────────────────────────────────────────
 function ParticipantsBTN() {

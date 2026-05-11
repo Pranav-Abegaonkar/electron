@@ -5,7 +5,6 @@ import useIsTab from "../../hooks/useIsTab";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { ChatPanel } from "./ChatPanel";
 import { ParticipantPanel } from "./ParticipantPanel";
-import VirtualBackgroundContainer from "./VirtualBackgroundContainer";
 import { Dialog, Transition } from "@headlessui/react";
 import { useMediaQuery } from "react-responsive";
 import { useMeetingAppContext } from "../../MeetingAppContextDef";
@@ -50,8 +49,6 @@ const SideBarTabView = ({
             <p className="text-sm font-bold text-white font-poppins">
               {sideBarMode === "PARTICIPANTS"
                 ? `Participants (${new Map(participants)?.size})`
-                : sideBarMode === "VIRTUALBACKGROUND"
-                ? "Virtual Background"
                 : sideBarMode.charAt(0).toUpperCase() + sideBarMode.slice(1).toLowerCase()}
             </p>
             <button
@@ -66,8 +63,6 @@ const SideBarTabView = ({
           <ParticipantPanel panelHeight={panelHeight} />
         ) : sideBarMode === "CHAT" ? (
           <ChatPanel panelHeight={panelHeight} />
-        ) : sideBarMode === "VIRTUALBACKGROUND" ? (
-          <VirtualBackgroundContainer panelHeight={panelHeight} />
         ) : null}
       </div>
     </div>

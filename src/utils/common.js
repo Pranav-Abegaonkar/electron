@@ -50,7 +50,6 @@ export const nameTructed = (name, tructedLength) => {
 export const sideBarModes = {
   PARTICIPANTS: "PARTICIPANTS",
   CHAT: "CHAT",
-  VIRTUALBACKGROUND: "VIRTUALBACKGROUND",
 };
 
 export function debounce(func, wait, immediate) {

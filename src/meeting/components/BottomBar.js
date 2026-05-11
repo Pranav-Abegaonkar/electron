@@ -21,6 +21,7 @@ import EndIcon from "../../icons/Bottombar/EndIcon";
 import RaiseHandIcon from "../../icons/Bottombar/RaiseHandIcon";
 import WhiteboardIcon from "../../icons/Bottombar/WhiteboardIcon";
 import { sideBarModes } from "../../utils/common";
+import ScreenShareIcon from "../../icons/Bottombar/ScreenShareIcon";
 import { Dialog, Transition } from "@headlessui/react";
 import { useMeetingAppContext } from "../../MeetingAppContextDef";
 import useMediaStream from "../../hooks/useMediaStream";
@@ -353,6 +354,22 @@ function ParticipantsBTN() {
     />
   );
 }
+// ─── Screen share (file-level) ────────────────────────────────────────────────
+function ScreenShareBTN() {
+  const { localScreenShareOn, toggleScreenShare, presenterId } = useMeeting();
+  const isMobile = useIsMobile();
+  const isTab = useIsTab();
+
+  return (
+    <BarBtn
+      Icon={ScreenShareIcon}
+      onClick={() => toggleScreenShare()}
+      active={localScreenShareOn}
+      tooltip={localScreenShareOn ? "Stop Presenting" : "Present Screen"}
+      disabled={presenterId ? (localScreenShareOn ? false : true) : (isMobile || isTab)}
+    />
+  );
+}
 
 // ─── Meeting ID copy (file-level) ─────────────────────────────────────────────
 function MeetingIdCopyBTN() {
@@ -438,6 +455,10 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
                         <VBBTN />
                         <p className="text-[10px] text-[#888888] font-poppins">Virtual BG</p>
                       </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <ScreenShareBTN />
+                        <p className="text-[10px] text-[#888888] font-poppins">Share Screen</p>
+                      </div>
                       <div className="col-span-3 flex items-center">
                         <MeetingIdCopyBTN />
                       </div>
@@ -461,6 +482,7 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
         <RaiseHandBTN />
         <MicBTN />
         <WebCamBTN />
+        <ScreenShareBTN />
         <WhiteBoardBTN />
         <VBBTN />
         <LeaveBTN setIsMeetingLeft={setIsMeetingLeft} />

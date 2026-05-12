@@ -1,4 +1,4 @@
-# 🚀 Video SDK for React JS
+# 🚀 Video SDK for Electron
 
 [![Documentation](https://img.shields.io/badge/Read-Documentation-blue)](https://docs.videosdk.live/react/guide/video-and-audio-calling-api-sdk/concept-and-architecture)
 [![Discord](https://img.shields.io/discord/876774498798551130?label=Join%20on%20Discord)](https://discord.gg/kgAvyxtTxv)
@@ -18,6 +18,7 @@ At Video SDK, we’re building tools to help companies create world-class collab
 - [⚡ **Quick Setup**](#-quick-setup)
 - [🔧 **Prerequisites**](#-prerequisites)
 - [📦 **Running the Sample App**](#-running-the-sample-app)
+- [🏗️ **Build and Packaging**](#%EF%B8%8F-build-and-packaging)
 - [🔥 **Meeting Features**](#-meeting-features)
 - [🧠 **Key Concepts**](#-key-concepts)
 - [🔑 **Token Generation**](#-token-generation)
@@ -49,7 +50,7 @@ Follow these steps to get the sample app up and running:
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/videosdk-live/videosdk-rtc-react-sdk-example.git
+git clone https://github.com/Pranav-Abegaonkar/electron.git
 ```
 
 ### Step 2: Set Up Environment Variables
@@ -78,12 +79,35 @@ npm install
 
 ### Step 5: Launch the App
 
-Bingo, it's time to push the launch button.
+Launch the application in development mode:
 
 ```bash
-npm run start
+npm run dev
 ```
 
+This will start the React development server and then open the Electron window once the server is ready.
+
+
+## 📦 Build and Packaging
+
+To package the application for distribution, use the following commands:
+
+### macOS
+```bash
+npm run build-electron
+```
+
+### Windows
+```bash
+npm run build-win
+```
+
+### Build for Both
+```bash
+npm run build-all
+```
+
+The installers will be generated in the `dist` or `release` folder depending on your configuration.
 
 ## 🔥 Meeting Features
 
@@ -141,13 +165,13 @@ The token is used to create and validate a meeting using API and also initialize
 
 ### 1. Pre-Call Setup on Join Screen
 
-- **[components/DropDown.js](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/DropDown.js)** : A dropdown component for selecting audio input devices (microphones), monitoring audio via the Web Audio API, and managing microphone settings.
+- **[src/components/DropDown.js](./src/components/DropDown.js)** : A dropdown component for selecting audio input devices (microphones), monitoring audio via the Web Audio API, and managing microphone settings.
 
-- **[components/DropDownCam.js](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/DropDownCam.js)** : A dropdown component for selecting camera devices and managing camera permissions.
+- **[src/components/DropDownCam.js](./src/components/DropDownCam.js)** : A dropdown component for selecting camera devices and managing camera permissions.
 
-- **[components/DropDownSpeaker.js](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/DropDownSpeaker.js)** : Allows users to select speakers, test them with sample sounds, and track playback progress for confirmation.
+- **[src/components/DropDownSpeaker.js](./src/components/DropDownSpeaker.js)** : Allows users to select speakers, test them with sample sounds, and track playback progress for confirmation.
 
-- **[components/NetworkStats.js](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/NetworkStats.js)** : Displays real-time network statistics, such as upload and download speeds.
+- **[src/components/NetworkStats.js](./src/components/NetworkStats.js)** : Displays real-time network statistics, such as upload and download speeds.
 
 <p align="center">
 <img width="600" height="338" src="public/precall-screen.gif"/>
@@ -155,11 +179,11 @@ The token is used to create and validate a meeting using API and also initialize
 
 ### 2. Create or Join Meeting
 
-- **[`components/screens/JoiningScreen.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/screens/JoiningScreen.js)** : Provides users the option to create or join a meeting, manage webcam and mic status, select devices (microphone, camera, speakers), check permissions, preview video, and monitor network statistics to ensure proper setup before entering the meeting.
+- **[`src/components/screens/JoiningScreen.js`](./src/components/screens/JoiningScreen.js)** : Provides users the option to create or join a meeting, manage webcam and mic status, select devices (microphone, camera, speakers), check permissions, preview video, and monitor network statistics to ensure proper setup before entering the meeting.
 
-- **[`api.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/api.js)** : Includes all API calls for creating and validating meetings.
+- **[`src/api.js`](./src/api.js)** : Includes all API calls for creating and validating meetings.
 
-- **[`components/MeetingDetailsScreen.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/MeetingDetailsScreen.js)** : Displays options for creating or joining a meeting.
+- **[`src/components/MeetingDetailsScreen.js`](./src/components/MeetingDetailsScreen.js)** : Displays options for creating or joining a meeting.
 
 <p align="center">
 <img width="600" height="338" src="public/create-meeting.gif"/>
@@ -167,7 +191,7 @@ The token is used to create and validate a meeting using API and also initialize
 
 ### 3. Waiting Screen
 
-- **[`components/screens/WaitingToJoin.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/screens/WaitingToJoinScreen.js)** : Displays a Lottie animation with messages while waiting to join the meeting. This screen is shown until the `isMeetingJoined` flag is true, which is received from the `meeting` initialized using `useMeeting()` from `@videosdk.live/react-sdk`.
+- **[`src/components/screens/WaitingToJoin.js`](./src/components/screens/WaitingToJoin.js)** : Displays a Lottie animation with messages while waiting to join the meeting. This screen is shown until the `isMeetingJoined` flag is true, which is received from the `meeting` initialized using `useMeeting()` from `@videosdk.live/react-sdk`.
 
 <p align="center">
 <img width="600" height="338" src="public/waiting-screen.gif"/>
@@ -175,11 +199,11 @@ The token is used to create and validate a meeting using API and also initialize
 
 ### 4. Participant View
 
-- **[`components/ParticipantView.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/ParticipantView.js)** : Displays a single participant's video with a corner display for the participant's name.
+- **[`src/components/ParticipantView.js`](./src/components/ParticipantView.js)** : Displays a single participant's video with a corner display for the participant's name.
 
-- **[`components/ParticipantGrid.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/ParticipantGrid.js)** : Displays a grid of participants shown on the main screen.
+- **[`src/components/ParticipantGrid.js`](./src/components/ParticipantGrid.js)** : Displays a grid of participants shown on the main screen.
 
-- **[`meeting/components/ParticipantView.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/meeting/components/ParticipantView.js)** : Manage how many participants will be displayed in the participant grid.
+- **[`src/meeting/components/ParticipantView.js`](./src/meeting/components/ParticipantView.js)** : Manage how many participants will be displayed in the participant grid.
 
 <p align="center">
 <img width="600" height="338" src="public/participant_view.png"/>
@@ -187,7 +211,7 @@ The token is used to create and validate a meeting using API and also initialize
 
 ### 5. Meeting Bottom Bar
 
-- **[`meeting/components/BottomBar.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/meeting/components/BottomBar.js)**  
+- **[`src/meeting/components/BottomBar.js`](./src/meeting/components/BottomBar.js)**  
   Contains the buttons displayed at the bottom of the screen:
   - Shows the meeting ID with a copy icon button on the left.
   - Displays the recording indicator, raise hand button, mic button (with a list of available mics), webcam button (with available webcam list), screen share button, and leave meeting button in the middle.
@@ -200,7 +224,7 @@ The token is used to create and validate a meeting using API and also initialize
 
 ### 6. Presenter View
 
-- **[`components/PresenterView.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/PresenterView.js)** : Displays the view when a participant shares their screen.
+- **[`src/components/PresenterView.js`](./src/components/PresenterView.js)** : Displays the view when a participant shares their screen.
 
 <p align="center">
 <img width="600" height="338" src="public/presenter-view.gif"/>
@@ -208,7 +232,7 @@ The token is used to create and validate a meeting using API and also initialize
 
 ### 7. Chat
 
-- **[`sidebar/ChatPanel.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/sidebar/ChatPanel.js)** : Contains the chat side panel, with a chat input field and a list of chat messages.
+- **[`src/components/sidebar/ChatPanel.js`](./src/components/sidebar/ChatPanel.js)** : Contains the chat side panel, with a chat input field and a list of chat messages.
 
 <p align="center">
 <img width="600" height="338" src="public/chat.gif"/>
@@ -216,7 +240,7 @@ The token is used to create and validate a meeting using API and also initialize
 
 ### 8. Participant List
 
-- **[`sidebar/ParticipantPanel.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/sidebar/ParticipantPanel.js)** : Displays the list of participants present in the meeting.
+- **[`src/components/sidebar/ParticipantPanel.js`](./src/components/sidebar/ParticipantPanel.js)** : Displays the list of participants present in the meeting.
 
 <p align="center">
 <img width="600" height="338" src="public/participant_list.gif"/>
@@ -224,7 +248,7 @@ The token is used to create and validate a meeting using API and also initialize
 
 ### 9. Leave Screen
 
-- **[`components/screens/LeaveScreen.js`](https://github.com/videosdk-live/videosdk-rtc-react-sdk-example/blob/main/src/components/screens/LeaveScreen.js)** : Displays the leave screen when participant exit the meeting.
+- **[`src/components/screens/LeaveScreen.js`](./src/components/screens/LeaveScreen.js)** : Displays the leave screen when participant exit the meeting.
 
 <p align="center">
 <img width="600" src="public/leave-screen.png"/>

@@ -313,7 +313,7 @@ export const CornerDisplayName = ({
                         >
                           <div
                             ref={setStatsBoxHeightRef}
-                            className="bg-gray-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 "
+                            className="bg-[#1B1C27] rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 "
                           >
                             <div
                               className={`p-[9px] flex items-center justify-between rounded-t-lg`}
@@ -491,7 +491,7 @@ export function ParticipantView({ participantId }) {
       onMouseLeave={() => {
         setMouseOver(false);
       }}
-      className={`h-full w-full  bg-gray-750 relative overflow-hidden rounded-lg video-cover`}
+      className={`h-full w-full bg-[#252636] relative overflow-hidden rounded-xl video-cover`}
     >
       <audio ref={micRef} autoPlay muted={isLocal} />
       {webcamOn ? (
@@ -509,7 +509,7 @@ export function ParticipantView({ participantId }) {
       ) : (
         <div className="h-full w-full flex items-center justify-center">
           <div
-            className={`z-10 flex items-center justify-center rounded-full bg-gray-800 2xl:h-[92px] h-[52px] 2xl:w-[92px] w-[52px]`}
+            className={`z-10 flex items-center justify-center rounded-full bg-[#1B1C27] border border-[#3D3E50] 2xl:h-[92px] h-[52px] 2xl:w-[92px] w-[52px]`}
           >
             <p className="text-2xl text-white">
               {String(activeDisplayName).charAt(0).toUpperCase()}

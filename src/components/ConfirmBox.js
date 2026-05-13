@@ -12,72 +12,59 @@ const ConfirmBox = ({
   subTitleColor,
 }) => {
   return (
-    <>
-      <Transition appear show={open} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={() => {}}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-25" /> 
-          </Transition.Child>
+    <Transition appear show={open} as={Fragment}>
+      <Dialog as="div" className="relative z-10" onClose={() => {}}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100"
+          leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-[#1B1C27] bg-opacity-30" />
+        </Transition.Child>
 
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center  text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-11/12 max-w-md transform overflow-hidden rounded bg-gray-750 p-4 text-left align-middle shadow-xl transition-all">
-                  <Dialog.Title className="text-base font-medium  text-white ">
-                    {title}
-                  </Dialog.Title>
-                  <div className="mt-2">
-                    <p
-                      className="text-base"
-                      style={{
-                        color: subTitleColor ? subTitleColor : "#9FA0A7",
-                      }}
-                    >
-                      {subTitle}
-                    </p>
-                  </div>
-
-                  <div className="mt-6 flex justify-end">
-                    {rejectText && (
-                      <button
-                        type="button"
-                        className="mr-2 rounded px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 "
-                        onClick={onReject}
-                      >
-                        {rejectText}
-                      </button>
-                    )}
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-11/12 max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-[0_4px_16px_rgba(0,0,0,0.12)] border border-[#EEEEEE] transition-all">
+                <Dialog.Title className="text-base font-bold text-[#1B1C27] font-poppins">
+                  {title}
+                </Dialog.Title>
+                <div className="mt-2">
+                  <p
+                    className="text-sm font-poppins"
+                    style={{ color: subTitleColor || "#888888" }}
+                  >
+                    {subTitle}
+                  </p>
+                </div>
+                <div className="mt-6 flex justify-end gap-2">
+                  {rejectText && (
                     <button
                       type="button"
-                      className="rounded border border-white bg-transparent px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-                      onClick={onSuccess}
+                      className="rounded-lg px-4 py-2 text-sm font-medium font-poppins text-[#888888] hover:bg-[#F5F6FF] transition-colors"
+                      onClick={onReject}
                     >
-                      {successText}
+                      {rejectText}
                     </button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
+                  )}
+                  <button
+                    type="button"
+                    className="rounded-lg border border-[#888CC4] bg-[#888CC4] hover:bg-[#7a7eb5] px-4 py-2 text-sm font-semibold font-poppins text-white transition-colors"
+                    onClick={onSuccess}
+                  >
+                    {successText}
+                  </button>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
           </div>
-        </Dialog>
-      </Transition>
-    </>
+        </div>
+      </Dialog>
+    </Transition>
   );
 };
 

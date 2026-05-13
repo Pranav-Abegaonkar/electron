@@ -189,12 +189,12 @@ export default function DropDown({
                 <DropMIC fillColor={isHovered || open ? "#FFF" : "#B4B4B4"} />
 
               </div>
-              <span className="overflow-hidden whitespace-nowrap overflow-ellipsis w-full ml-6">
+              <span className="flex-1 min-w-0 truncate ml-3 text-sm">
                 {isMicrophonePermissionAllowed ? selectedMic?.label : "Permission Needed"}
               </span>
               <ChevronDownIcon
                 className={`${open ? 'text-white' : 'text-customGray-250 hover:text-white'}
-                ml-8 h-5 w-10 transition duration-150 ease-in-out group-hover:text-orange-300/80 mt-1`}
+                ml-1 h-4 w-4 shrink-0 transition duration-150 ease-in-out group-hover:text-orange-300/80`}
                 aria-hidden="true"
               />
             </Popover.Button>

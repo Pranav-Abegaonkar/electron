@@ -1,4 +1,5 @@
-import { useContext, createContext, useState, useEffect, useRef } from "react";
+import { useContext, createContext, useState, useEffect, useRef, useMemo } from "react";
+import { VirtualBackgroundProcessor } from "@videosdk.live/videosdk-media-processor-web";
 
 export const MeetingAppContext = createContext();
 
@@ -12,10 +13,12 @@ export const MeetingAppProvider = ({ children }) => {
   const [isMicrophonePermissionAllowed, setIsMicrophonePermissionAllowed] = useState(null);
   const [raisedHandsParticipants, setRaisedHandsParticipants] = useState([]);
   const [sideBarMode, setSideBarMode] = useState(null);
-  const [pipMode, setPipMode] = useState(false);
   const [reconnectingParticipants, setReconnectingParticipants] = useState([]); // Track reconnecting participants
   const [participantLeftModalData, setParticipantLeftModalData] = useState({ open: false, participantName: "" });
   const [whiteboardStarted, setWhiteboardStarted] = useState(false);
+  const [img, setImg] = useState([]);
+  const [type, setType] = useState([]);
+  const [isMirrorViewChecked, setIsMirrorViewChecked] = useState(true);
 
   const useRaisedHandParticipants = () => {
     const raisedHandsParticipantsRef = useRef();
@@ -40,6 +43,7 @@ export const MeetingAppProvider = ({ children }) => {
 
     useEffect(() => {
       raisedHandsParticipantsRef.current = raisedHandsParticipants;
+      // eslint-disable-next-line
     }, [raisedHandsParticipants]);
 
     const _handleRemoveOld = () => {
@@ -66,6 +70,7 @@ export const MeetingAppProvider = ({ children }) => {
 
     return { participantRaisedHand };
   };
+  const videoProcessor = useMemo(() => new VirtualBackgroundProcessor(), []);
 
   return (
     <MeetingAppContext.Provider
@@ -77,12 +82,15 @@ export const MeetingAppProvider = ({ children }) => {
         selectedWebcam,
         selectedSpeaker,
         sideBarMode,
-        pipMode,
         isCameraPermissionAllowed,
         isMicrophonePermissionAllowed,
         reconnectingParticipants,
         participantLeftModalData,
         whiteboardStarted,
+        img,
+        type,
+        videoProcessor,
+        isMirrorViewChecked,
 
         // setters
 
@@ -91,13 +99,15 @@ export const MeetingAppProvider = ({ children }) => {
         setSelectedWebcam,
         setSelectedSpeaker,
         setSideBarMode,
-        setPipMode,
         useRaisedHandParticipants,
         setIsCameraPermissionAllowed,
         setIsMicrophonePermissionAllowed,
         setReconnectingParticipants,
         setParticipantLeftModalData,
         setWhiteboardStarted,
+        setImg,
+        setType,
+        setIsMirrorViewChecked,
       }}
     >
       {children}

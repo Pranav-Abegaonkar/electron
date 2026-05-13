@@ -28,3 +28,4 @@ package-lock.json
 /dist-electron
 /dist
 .env
+graphify-out

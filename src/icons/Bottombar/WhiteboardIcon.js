@@ -1,18 +1,14 @@
 import * as React from "react";
 
-const WhiteboardIcon = (props) => (
-  <svg
-    width={24}
-    height={24}
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <path
-      d="M3 3h18a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm1 2v11h16V5H4Zm3 8.5 2.5-3 2 2.5 2.5-3.5L17 13.5H7ZM8 21h8v2H8v-2Z"
-      fill={props.fillcolor || props.color || "#fff"}
-    />
-  </svg>
-);
+const WhiteboardIcon = (props) => {
+  const c = props.fillcolor || props.color || "#fff";
+  return (
+    <svg width={24} height={24} fill="none" stroke={c} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M7 16v5M17 16v5M9 14h6" />
+      <path d="M6 8c2-2 4 4 6 2s2-4 4-2" />
+    </svg>
+  );
+};
 
 export default WhiteboardIcon;

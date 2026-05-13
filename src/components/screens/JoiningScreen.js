@@ -1,22 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
-import { MeetingDetailsScreen } from "../MeetingDetailsScreen";
-import { createMeeting, getToken, validateMeeting } from "../../api";
+import React, { Fragment, useEffect, useRef, useState } from "react";
+import { getToken, validateMeeting, createMeeting } from "../../api";
 import ConfirmBox from "../ConfirmBox";
-import WebcamOffIcon from "../../icons/WebcamOffIcon";
-import WebcamOnIcon from "../../icons/Bottombar/WebcamOnIcon";
-import MicOffIcon from "../../icons/MicOffIcon";
-import MicOnIcon from "../../icons/Bottombar/MicOnIcon";
+import { ClipboardIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 import { Constants, useMediaDevice } from "@videosdk.live/react-sdk";
-import MicPermissionDenied from "../../icons/MicPermissionDenied";
-import CameraPermissionDenied from "../../icons/CameraPermissionDenied";
 import NetworkStats from "../NetworkStats";
-import DropDownCam from "../DropDownCam";
-import DropDownSpeaker from "../DropDownSpeaker";
-import DropDown from "../DropDown";
+import MicDropUp from "../MicDropUp";
+import CamDropUp from "../CamDropUp";
+import VBDropUp from "../VBDropUp";
 import useMediaStream from "../../hooks/useMediaStream";
 import useIsMobile from "../../hooks/useIsMobile";
 import { useMeetingAppContext } from "../../MeetingAppContextDef";
+import PreCallReminderModal from "./PreCallReminderModal";
+
 
 export function JoiningScreen({
   participantName,
@@ -42,7 +38,9 @@ export function JoiningScreen({
     isMicrophonePermissionAllowed,
     setIsCameraPermissionAllowed,
     setIsMicrophonePermissionAllowed,
-  } = useMeetingAppContext()
+    videoProcessor,
+  } = useMeetingAppContext();
+
   const isMobile = useIsMobile();
 
   const [{ webcams, mics, speakers }, setDevices] = useState({
@@ -58,12 +56,17 @@ export function JoiningScreen({
     requestPermission,
     getPlaybackDevices,
   } = useMediaDevice({ onDeviceChanged });
+
   const [audioTrack, setAudioTrack] = useState(null);
   const [videoTrack, setVideoTrack] = useState(null);
   const [dlgMuted, setDlgMuted] = useState(false);
   const [dlgDevices, setDlgDevices] = useState(false);
-  const [didDeviceChange, setDidDeviceChange] = useState(false);
-  const [testSpeaker, setTestSpeaker] = useState(false)
+  const [hasSeenReminders, setHasSeenReminders] = useState(false);
+  const [localMeetingId, setLocalMeetingId] = useState("");
+  const [isCopied, setIsCopied] = useState(false);
+  // "idle" | "joining" | "creating"
+  const [status, setStatus] = useState("idle");
+  const [activeVBIndex, setActiveVBIndex] = useState(0);
 
   const videoPlayerRef = useRef();
   const audioPlayerRef = useRef();
@@ -74,13 +77,8 @@ export function JoiningScreen({
   const webcamRef = useRef();
   const micRef = useRef();
 
-  useEffect(() => {
-    webcamRef.current = webcamOn;
-  }, [webcamOn]);
-
-  useEffect(() => {
-    micRef.current = micOn;
-  }, [micOn]);
+  useEffect(() => { webcamRef.current = webcamOn; }, [webcamOn]);
+  useEffect(() => { micRef.current = micOn; }, [micOn]);
 
   useEffect(() => {
     permissonAvaialble.current = {
@@ -98,87 +96,67 @@ export function JoiningScreen({
 
   useEffect(() => {
     if (micOn) {
-      // Close the existing audio track if there's a new one
       if (audioTrackRef.current && audioTrackRef.current !== audioTrack) {
         audioTrackRef.current.stop();
       }
-
       audioTrackRef.current = audioTrack;
-
       if (audioTrack) {
         const audioSrcObject = new MediaStream([audioTrack]);
         if (audioPlayerRef.current) {
           audioPlayerRef.current.srcObject = audioSrcObject;
-          audioPlayerRef.current
-            .play()
-            .catch((error) => console.log("audio play error", error));
+          audioPlayerRef.current.play().catch((err) => console.log("audio play error", err));
         }
-      } else {
-        if (audioPlayerRef.current) {
-          audioPlayerRef.current.srcObject = null;
-        }
+      } else if (audioPlayerRef.current) {
+        audioPlayerRef.current.srcObject = null;
       }
     }
   }, [micOn, audioTrack]);
 
   useEffect(() => {
     if (webcamOn) {
-
-      // Close the existing video track if there's a new one
       if (videoTrackRef.current && videoTrackRef.current !== videoTrack) {
-        videoTrackRef.current.stop(); // Stop the existing video track
+        videoTrackRef.current.stop();
       }
-
       videoTrackRef.current = videoTrack;
 
-      var isPlaying =
+      const isPlaying =
         videoPlayerRef.current.currentTime > 0 &&
         !videoPlayerRef.current.paused &&
         !videoPlayerRef.current.ended &&
-        videoPlayerRef.current.readyState >
-        videoPlayerRef.current.HAVE_CURRENT_DATA;
+        videoPlayerRef.current.readyState > videoPlayerRef.current.HAVE_CURRENT_DATA;
 
       if (videoTrack) {
         const videoSrcObject = new MediaStream([videoTrack]);
-
         if (videoPlayerRef.current) {
           videoPlayerRef.current.srcObject = videoSrcObject;
           if (videoPlayerRef.current.pause && !isPlaying) {
-            videoPlayerRef.current
-              .play()
-              .catch((error) => console.log("error", error));
+            videoPlayerRef.current.play().catch((err) => console.log("error", err));
           }
         }
-      } else {
-        if (videoPlayerRef.current) {
-          videoPlayerRef.current.srcObject = null;
-        }
+      } else if (videoPlayerRef.current) {
+        videoPlayerRef.current.srcObject = null;
       }
     }
   }, [webcamOn, videoTrack]);
 
-  useEffect(() => {
-    getCameraDevices();
-  }, [isCameraPermissionAllowed]);
-
-  useEffect(() => {
-    getAudioDevices();
-  }, [isMicrophonePermissionAllowed]);
-
+  useEffect(() => { getCameraDevices(); }, [isCameraPermissionAllowed]);
+  useEffect(() => { getAudioDevices(); }, [isMicrophonePermissionAllowed]);
   useEffect(() => {
     checkMediaPermission();
-    return () => { };
+    return () => {};
   }, []);
+  useEffect(() => { getAudioDevices(); }, []);
 
   const _toggleWebcam = () => {
-    const videoTrack = videoTrackRef.current;
-
+    const track = videoTrackRef.current;
     if (webcamOn) {
-      if (videoTrack) {
-        videoTrack.stop();
+      if (track) {
+        track.stop();
+        if (videoProcessor?.processorRunning) videoProcessor.stop();
         setVideoTrack(null);
         setCustomVideoStream(null);
         setWebcamOn(false);
+        setActiveVBIndex(0);
       }
     } else {
       getDefaultMediaTracks({ mic: false, webcam: true });
@@ -187,11 +165,10 @@ export function JoiningScreen({
   };
 
   const _toggleMic = () => {
-    const audioTrack = audioTrackRef.current;
-
+    const track = audioTrackRef.current;
     if (micOn) {
-      if (audioTrack) {
-        audioTrack.stop();
+      if (track) {
+        track.stop();
         setAudioTrack(null);
         setCustomAudioStream(null);
         setMicOn(false);
@@ -205,74 +182,54 @@ export function JoiningScreen({
   const changeWebcam = async (deviceId) => {
     if (webcamOn) {
       const currentvideoTrack = videoTrackRef.current;
-      if (currentvideoTrack) {
-        currentvideoTrack.stop();
-      }
-
-      const stream = await getVideoTrack({
-        webcamId: deviceId,
-      });
+      if (currentvideoTrack) currentvideoTrack.stop();
+      const stream = await getVideoTrack({ webcamId: deviceId });
       setCustomVideoStream(stream);
       const videoTracks = stream?.getVideoTracks();
-      const videoTrack = videoTracks.length ? videoTracks[0] : null;
-      setVideoTrack(videoTrack);
+      setVideoTrack(videoTracks?.length ? videoTracks[0] : null);
     }
   };
+
   const changeMic = async (deviceId) => {
     if (micOn) {
       const currentAudioTrack = audioTrackRef.current;
       currentAudioTrack && currentAudioTrack.stop();
-      const stream = await getAudioTrack({
-        micId: deviceId,
-      });
+      const stream = await getAudioTrack({ micId: deviceId });
       setCustomAudioStream(stream);
       const audioTracks = stream?.getAudioTracks();
-      const audioTrack = audioTracks.length ? audioTracks[0] : null;
       clearInterval(audioAnalyserIntervalRef.current);
-      setAudioTrack(audioTrack);
+      setAudioTrack(audioTracks?.length ? audioTracks[0] : null);
     }
   };
 
   const getDefaultMediaTracks = async ({ mic, webcam }) => {
     if (mic) {
-      const stream = await getAudioTrack({
-        micId: selectedMic.id,
-      });
+      const stream = await getAudioTrack({ micId: selectedMic.id });
       setCustomAudioStream(stream);
       const audioTracks = stream?.getAudioTracks();
-      const audioTrack = audioTracks?.length ? audioTracks[0] : null;
-      setAudioTrack(audioTrack);
+      setAudioTrack(audioTracks?.length ? audioTracks[0] : null);
     }
-
     if (webcam) {
-      const stream = await getVideoTrack({
-        webcamId: selectedWebcam?.id,
-      });
+      const stream = await getVideoTrack({ webcamId: selectedWebcam?.id });
       setCustomVideoStream(stream);
       const videoTracks = stream?.getVideoTracks();
-      const videoTrack = videoTracks.length ? videoTracks[0] : null;
-      setVideoTrack(videoTrack);
+      setVideoTrack(videoTracks?.length ? videoTracks[0] : null);
     }
   };
 
   async function startMuteListener() {
     const currentAudioTrack = audioTrackRef.current;
     if (currentAudioTrack) {
-      if (currentAudioTrack.muted) {
-        setDlgMuted(true);
-      }
-      currentAudioTrack.addEventListener("mute", (ev) => {
-        setDlgMuted(true);
-      });
+      if (currentAudioTrack.muted) setDlgMuted(true);
+      currentAudioTrack.addEventListener("mute", () => setDlgMuted(true));
     }
   }
 
   const isFirefox = navigator.userAgent.toLowerCase().indexOf("firefox") > -1;
+
   async function requestAudioVideoPermission(mediaType) {
     try {
       const permission = await requestPermission(mediaType);
-
-      // For Video
       if (isFirefox) {
         const isVideoAllowed = permission.get("video");
         setIsCameraPermissionAllowed(isVideoAllowed);
@@ -280,10 +237,6 @@ export function JoiningScreen({
           setWebcamOn(true);
           await getDefaultMediaTracks({ mic: false, webcam: true });
         }
-      }
-
-      // For Audio
-      if (isFirefox) {
         const isAudioAllowed = permission.get("audio");
         setIsMicrophonePermissionAllowed(isAudioAllowed);
         if (isAudioAllowed) {
@@ -291,7 +244,6 @@ export function JoiningScreen({
           await getDefaultMediaTracks({ mic: true, webcam: false });
         }
       }
-
       if (mediaType === Constants.permission.AUDIO) {
         const isAudioAllowed = permission.get(Constants.permission.AUDIO);
         setIsMicrophonePermissionAllowed(isAudioAllowed);
@@ -300,7 +252,6 @@ export function JoiningScreen({
           await getDefaultMediaTracks({ mic: true, webcam: false });
         }
       }
-
       if (mediaType === Constants.permission.VIDEO) {
         const isVideoAllowed = permission.get(Constants.permission.VIDEO);
         setIsCameraPermissionAllowed(isVideoAllowed);
@@ -313,8 +264,8 @@ export function JoiningScreen({
       console.log("Error in requestPermission ", ex);
     }
   }
+
   function onDeviceChanged() {
-    setDidDeviceChange(true);
     getCameraDevices();
     getAudioDevices();
     getDefaultMediaTracks({ mic: micRef.current, webcam: webcamRef.current });
@@ -323,16 +274,10 @@ export function JoiningScreen({
   const checkMediaPermission = async () => {
     try {
       const checkAudioVideoPermission = await checkPermissions();
-      const cameraPermissionAllowed = checkAudioVideoPermission.get(
-        Constants.permission.VIDEO
-      );
-      const microphonePermissionAllowed = checkAudioVideoPermission.get(
-        Constants.permission.AUDIO
-      );
-
+      const cameraPermissionAllowed = checkAudioVideoPermission.get(Constants.permission.VIDEO);
+      const microphonePermissionAllowed = checkAudioVideoPermission.get(Constants.permission.AUDIO);
       setIsCameraPermissionAllowed(cameraPermissionAllowed);
       setIsMicrophonePermissionAllowed(microphonePermissionAllowed);
-
       if (microphonePermissionAllowed) {
         setMicOn(true);
         getDefaultMediaTracks({ mic: true, webcam: false });
@@ -346,7 +291,6 @@ export function JoiningScreen({
         await requestAudioVideoPermission(Constants.permission.VIDEO);
       }
     } catch (error) {
-      // For firefox, it will request audio and video simultaneously.
       await requestAudioVideoPermission();
       console.log(error);
     }
@@ -356,13 +300,8 @@ export function JoiningScreen({
     try {
       if (permissonAvaialble.current?.isCameraPermissionAllowed) {
         let webcams = await getCameras();
-        setSelectedWebcam({
-          id: webcams[0]?.deviceId,
-          label: webcams[0]?.label,
-        });
-        setDevices((devices) => {
-          return { ...devices, webcams };
-        });
+        setSelectedWebcam({ id: webcams[0]?.deviceId, label: webcams[0]?.label });
+        setDevices((d) => ({ ...d, webcams }));
       }
     } catch (err) {
       console.log("Error in getting camera devices", err);
@@ -374,218 +313,255 @@ export function JoiningScreen({
       if (permissonAvaialble.current?.isMicrophonePermissionAllowed) {
         let mics = await getMicrophones();
         let speakers = await getPlaybackDevices();
-        const hasMic = mics.length > 0;
-        if (hasMic) {
-          startMuteListener();
-        }
-
-        setSelectedSpeaker({
-          id: speakers[0]?.deviceId,
-          label: speakers[0]?.label,
-        });
+        if (mics.length > 0) startMuteListener();
+        setSelectedSpeaker({ id: speakers[0]?.deviceId, label: speakers[0]?.label });
         await setSelectedMic({ id: mics[0]?.deviceId, label: mics[0]?.label });
-        setDevices((devices) => {
-          return { ...devices, mics, speakers };
-        });
+        setDevices((d) => ({ ...d, mics, speakers }));
       }
     } catch (err) {
       console.log("Error in getting audio devices", err);
     }
   };
 
-
-  useEffect(() => {
-    getAudioDevices()
-  }, [])
-
-  const ButtonWithTooltip = ({ onClick, onState, OnIcon, OffIcon }) => {
-    const btnRef = useRef();
-    return (
-      <>
-        <div>
-          <button
-            ref={btnRef}
-            onClick={onClick}
-            className={`rounded-full min-w-auto w-12 h-12 flex items-center justify-center 
-            ${onState ? "bg-white" : "bg-red-650 text-white"}`}
-          >
-            {onState ? (
-              <OnIcon fillcolor={onState ? "#050A0E" : "#fff"} />
-            ) : (
-              <OffIcon fillcolor={onState ? "#050A0E" : "#fff"} />
-            )}
-          </button>
-        </div>
-      </>
-    );
+  const handleJoinSession = async () => {
+    if (!localMeetingId.trim() || status !== "idle") return;
+    setStatus("joining");
+    try {
+      const token = await getToken();
+      const { meetingId, err } = await validateMeeting({ roomId: localMeetingId.trim(), token });
+      if (meetingId === localMeetingId.trim()) {
+        setToken(token);
+        setMeetingId(meetingId);
+        onClickStartMeeting();
+      } else {
+        toast(String(err), { position: "bottom-left", autoClose: 4000, hideProgressBar: true, closeButton: false, theme: "light" });
+      }
+    } finally {
+      setStatus("idle");
+    }
   };
+
+  // ─── TEST ONLY: remove handleCreateMeeting + button in JSX to disable ───
+  const handleCreateMeeting = async () => {
+    if (status !== "idle") return;
+    setStatus("creating");
+    try {
+      const token = await getToken();
+      const { meetingId, err } = await createMeeting({ token });
+      if (meetingId) setLocalMeetingId(meetingId);
+      else toast(String(err || "Failed to create meeting"), { position: "bottom-left", autoClose: 3000, theme: "light" });
+    } finally {
+      setStatus("idle");
+    }
+  };
+  // ─── END TEST ONLY ───
+
+  const BASE_VB_URL = "https://cdn.videosdk.live/virtual-background";
+  const backgroundImageArr = [
+    { previewImageUrl: `${BASE_VB_URL}/webcam-no-filter-preview.png`, type: "DEFAULT" },
+    { previewImageUrl: `${BASE_VB_URL}/webcam-blur-preview.png`, type: "blur" },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/san-fran-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/san-fran.jpeg` },
+    { previewImageUrl: `${BASE_VB_URL}/hill-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/hill.jpeg`, type: "image" },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/cloud-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/cloud.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/beach-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/beach.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/white-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/white-wall.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/wall-with-pot-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/wall-with-pot.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/window-conference-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/window-conference.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/sky-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/sky.jpeg` },
+    { previewImageUrl: `${BASE_VB_URL}/red-mix-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/red-mix.jpeg`, type: "image" },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/blue-mix-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/blue-mix.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/coffe-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/coffe-wall.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/paper-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/paper-wall.jpeg` },
+    { type: "image", previewImageUrl: `${BASE_VB_URL}/design-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/design-wall.jpeg` },
+  ];
+
+  const handleSelectBackground = async ({ type, backgroudImageUrl }, index) => {
+    if (!videoProcessor) return;
+    if (!videoProcessor.ready) await videoProcessor.init();
+
+    if (type === "DEFAULT") {
+      if (videoProcessor.processorRunning) videoProcessor.stop();
+      const rawStream = await getVideoTrack({ webcamId: selectedWebcam?.id });
+      setCustomVideoStream(rawStream);
+      const [track] = rawStream.getVideoTracks();
+      setVideoTrack(track || null);
+      setActiveVBIndex(0);
+      return;
+    }
+
+    try {
+      if (videoProcessor.processorRunning) {
+        videoProcessor.updateProcessorConfig({ type, imageUrl: backgroudImageUrl });
+      } else {
+        const rawStream = await getVideoTrack({ webcamId: selectedWebcam?.id });
+        const processed = await videoProcessor.start(rawStream, { type, imageUrl: backgroudImageUrl });
+        setCustomVideoStream(processed);
+        const [track] = processed.getVideoTracks();
+        setVideoTrack(track || null);
+      }
+      setActiveVBIndex(index);
+    } catch (err) {
+      console.log("VB error:", err);
+    }
+  };
+
+  const DISPLAY_MEETING_ID = localMeetingId || "DUMMY MEETING ID";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(DISPLAY_MEETING_ID);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const canJoin = localMeetingId.trim().length > 0 && status === "idle";
 
   return (
     <>
-      <div className="overflow-y-auto flex flex-col flex-1  h-screen bg-gray-800">
-        <div className="flex flex-1 flex-col md:flex-row  items-center justify-center m-10 md:m-[30px] lg:m-16">
-          <div className="container grid  md:grid-flow-col grid-flow-row ">
-            <div className="grid grid-cols-12">
-              <div className="md:col-span-7 2xl:col-span-7 col-span-12">
-                <div className="flex items-center justify-center p-1.5 sm:p-4 lg:p-6">
-                  <div className="relative w-full md:pl-4  sm:pl-10  pl-5  md:pr-4 sm:pr-10 pr-5">
+      <div className="min-h-screen bg-[#F5F6FF] font-poppins flex flex-col overflow-y-auto">
+        <header className="flex justify-center pt-10 pb-2">
+          <span className="text-[#888CC4] font-bold font-poppins text-2xl tracking-wider">TYHO</span>
+        </header>
 
-                    <div className="w-full relative" style={{ height: isMobile ? "45vh" : "55vh" }}>
-                      <div className={`absolute  z-10 ${isMobile ? "right-0" : " right-2 top-2"}`}>
-                        <NetworkStats />
-                      </div>
-                      {isMobile && <audio
-                        autoPlay
-                        playsInline
-                        muted={!testSpeaker}
-                        ref={audioPlayerRef}
-                        controls={false}
-                      />}
-                      <video
-                        autoPlay
-                        playsInline
-                        muted
-                        ref={videoPlayerRef}
-                        controls={false}
-                        style={{
-                          backgroundColor: "#1c1c1c",
-                          transform: "scaleX(-1)",
-                          WebkitTransform: "scaleX(-1)"
-                        }}
-                        className={
-                          "rounded-[10px] h-full w-full object-cover flex items-center justify-center flip"
-                        }
+        <main className="flex-1 flex items-start justify-center px-4 md:px-8 lg:px-16 py-6">
+          <div className="w-full max-w-6xl grid grid-cols-12 gap-4 lg:gap-8 items-start">
 
-                      />
+            {/* Left: camera preview + join controls */}
+            <div className="col-span-12 md:col-span-7 flex flex-col gap-4">
 
-                      <div className="absolute xl:bottom-6 bottom-4 left-0 right-0">
-                        <div className="container grid grid-flow-col space-x-4 items-center justify-center md:-m-2">
-                          {isMicrophonePermissionAllowed ? (
-                            <ButtonWithTooltip
-                              onClick={_toggleMic}
-                              onState={micOn}
-                              mic={true}
-                              OnIcon={MicOnIcon}
-                              OffIcon={MicOffIcon}
-                            />
-                          ) : (
-                            <MicPermissionDenied />
-                          )}
-
-                          {isCameraPermissionAllowed ? (
-                            <ButtonWithTooltip
-                              onClick={_toggleWebcam}
-                              onState={webcamOn}
-                              mic={false}
-                              OnIcon={WebcamOnIcon}
-                              OffIcon={WebcamOffIcon}
-                            />
-                          ) : (
-                            <CameraPermissionDenied />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <>
-
-
-                      <div className={`flex mt-3  ${isMobile ? "flex-col" : "flex-row "} `}>
-                        <div className={`${isMobile ? "w-full mt-1" : "w-1/3"}`}>
-                          <DropDown
-                            mics={mics}
-                            changeMic={changeMic}
-                            customAudioStream={customAudioStream}
-                            audioTrack={audioTrack}
-                            micOn={micOn}
-                            didDeviceChange={didDeviceChange}
-                            setDidDeviceChange={setDidDeviceChange}
-                            testSpeaker={testSpeaker}
-                            setTestSpeaker={setTestSpeaker}
-                          />
-                        </div>
-                        <div className={`lg:ml-3 ${isMobile ? "w-full" : "w-1/3 "}`}>
-                          {!isMobile && <DropDownSpeaker speakers={speakers} />}
-                        </div>
-                        <div className={`lg:ml-3 ${isMobile ? "w-full mt-1" : "w-1/3 "}`}>
-                          <DropDownCam
-                            changeWebcam={changeWebcam}
-                            webcams={webcams}
-                          />
-                        </div>
-
-
-
-                      </div>
-                    </>
-                  </div>
+              {/* Camera preview */}
+              <div
+                className="relative rounded-2xl bg-[#1B1C27]"
+                style={{ height: isMobile ? "40vh" : "clamp(280px, 48vh, 460px)" }}
+              >
+                <div className="absolute top-3 right-3 z-10">
+                  <NetworkStats />
+                </div>
+                {isMobile && (
+                  <audio autoPlay playsInline muted ref={audioPlayerRef} controls={false} />
+                )}
+                <video
+                  autoPlay playsInline muted ref={videoPlayerRef} controls={false}
+                  style={{ transform: "scaleX(-1)", WebkitTransform: "scaleX(-1)" }}
+                  className="h-full w-full object-cover rounded-2xl"
+                />
+                <div className="absolute bottom-4 inset-x-0 flex justify-center gap-3 z-10">
+                  <MicDropUp
+                    micOn={micOn} onToggle={_toggleMic}
+                    mics={mics} speakers={speakers} changeMic={changeMic}
+                    isMicrophonePermissionAllowed={isMicrophonePermissionAllowed}
+                  />
+                  <CamDropUp
+                    webcamOn={webcamOn} onToggle={_toggleWebcam}
+                    webcams={webcams} changeWebcam={changeWebcam}
+                    isCameraPermissionAllowed={isCameraPermissionAllowed}
+                  />
+                  {/* Virtual Background button — desktop only */}
+                  {!isMobile && (
+                    <VBDropUp
+                      vbOn={activeVBIndex !== 0}
+                      onToggle={() => {
+                        if (activeVBIndex !== 0) handleSelectBackground({ type: "DEFAULT" }, 0);
+                        else handleSelectBackground(backgroundImageArr[1], 1);
+                      }}
+                      backgroundImages={backgroundImageArr}
+                      activeVBIndex={activeVBIndex}
+                      handleSelectBackground={handleSelectBackground}
+                    />
+                  )}
                 </div>
               </div>
-              <div className="md:col-span-5 2xl:col-span-5 col-span-12 md:relative">
-                <div className="flex flex-1 flex-col items-center justify-center xl:m-16 lg:m-6 md:mt-9 lg:mt-14 xl:mt-20 mt-3 md:absolute md:left-0 md:right-0 md:top-0 md:bottom-0">
-                  <MeetingDetailsScreen
-                    participantName={participantName}
-                    setParticipantName={setParticipantName}
-                    videoTrack={videoTrack}
-                    setVideoTrack={setVideoTrack}
-                    onClickStartMeeting={onClickStartMeeting}
-                    onClickJoin={async (id) => {
-                      const token = await getToken();
-                      const { meetingId, err } = await validateMeeting({
-                        roomId: id,
-                        token,
-                      });
-                      if (meetingId === id) {
-                        setToken(token);
-                        setMeetingId(id);
-                        onClickStartMeeting();
-                      } else {
-                        toast(`${err}`, {
-                          position: "bottom-left",
-                          autoClose: 4000,
-                          hideProgressBar: true,
-                          closeButton: false,
-                          pauseOnHover: true,
-                          draggable: true,
-                          progress: undefined,
-                          theme: "light",
-                        });
-                      }
-                    }}
-                    _handleOnCreateMeeting={async () => {
-                      const token = await getToken();
-                      const { meetingId, err } = await createMeeting({ token });
 
-                      if (meetingId) {
-                        setToken(token);
-                        setMeetingId(meetingId);
-                      }
-                      return { meetingId: meetingId, err: err };
-                    }}
-                  />
+              {/* Join */}
+              <button
+                onClick={handleJoinSession}
+                disabled={!canJoin}
+                className={`w-full py-3 rounded-xl font-bold font-poppins text-base text-white transition-colors
+                  ${canJoin ? "bg-[#888CC4] hover:bg-[#7a7eb5]" : "bg-[#C5C8E3] cursor-not-allowed"}`}
+              >
+                {status === "joining" ? "Joining…" : "Join Session"}
+              </button>
+
+              {/* ─── TEST ONLY: delete this button to remove create-meeting ─── */}
+              <button
+                onClick={handleCreateMeeting}
+                disabled={status !== "idle"}
+                className="w-full py-2.5 rounded-xl border border-[#888CC4] text-[#888CC4] text-sm font-semibold font-poppins hover:bg-[#F5F6FF] transition-colors disabled:opacity-50"
+              >
+                {status === "creating" ? "Creating…" : "Create Test Meeting"}
+              </button>
+              {/* ─── END TEST ONLY ─── */}
+
+              {/* Session info card */}
+              <div className="bg-white border border-[#EEEEEE] rounded-2xl p-6 flex flex-col gap-4">
+                <p className="text-[#1B1C27] font-bold font-poppins text-base">
+                  6 Mar 2023, 06:00 PM – 07:00 PM
+                </p>
+                {/* Meeting ID / link row */}
+                <div className="bg-[#F5F5F5] border border-[#EEEEEE] rounded-lg flex items-center gap-2 px-4 py-3">
+                  <p
+                    className="flex-1 min-w-0 bg-transparent text-sm text-[#1B1C27] font-poppins outline-none truncate"
+                  >
+                    {DISPLAY_MEETING_ID}
+                  </p>
+                  <div className="w-px h-4 bg-[#EEEEEE] shrink-0" />
+                  <button
+                    onClick={handleCopy}
+                    className="shrink-0 text-[#888CC4] text-xs font-bold font-poppins transition-opacity"
+                  >
+                    {isCopied ? "Copied!" : "Copy"}
+                  </button>
+                  {isCopied
+                    ? <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
+                    : <ClipboardIcon className="w-4 h-4 text-[#888CC4] shrink-0" />
+                  }
                 </div>
               </div>
             </div>
+
+            {/* Right: info card — matches video height */}
+            <div className="col-span-12 md:col-span-5 md:mt-0 mt-4">
+              <div
+                className="bg-white border border-[#EEEEEE] rounded-2xl p-8 flex flex-col gap-4 overflow-y-auto"
+                style={{ height: isMobile ? "auto" : "clamp(280px, 48vh, 460px)" }}
+              >
+                <div className="flex flex-col gap-3">
+                  <p className="text-[#1B1C27] font-bold font-poppins text-base">
+                    For the best experience, please:
+                  </p>
+                  <ul className="list-disc pl-6 text-[#1B1C27] font-poppins text-sm space-y-2">
+                    <li>Use a Chrome browser on a laptop to attend your sessions.</li>
+                    <li>Check that you have a good internet connection, otherwise your video feed may be affected.</li>
+                  </ul>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-[#1B1C27] font-bold font-poppins text-sm">Note:</p>
+                  <p className="text-[#1B1C27] font-poppins text-sm">
+                    Screen sharing and virtual background have been disabled for all mobile devices (including tablets).
+                  </p>
+                </div>
+                <p className="text-[#1B1C27] font-poppins text-sm">Hope you have a great session.</p>
+              </div>
+            </div>
+
           </div>
-        </div>
+        </main>
       </div>
+
+      {!hasSeenReminders && (
+        <PreCallReminderModal onDismiss={() => setHasSeenReminders(true)} />
+      )}
+
       <ConfirmBox
         open={dlgMuted}
         successText="OKAY"
-        onSuccess={() => {
-          setDlgMuted(false);
-        }}
+        onSuccess={() => setDlgMuted(false)}
         title="System mic is muted"
-        subTitle="You're default microphone is muted, please unmute it or increase audio
-            input volume from system settings."
+        subTitle="You're default microphone is muted, please unmute it or increase audio input volume from system settings."
       />
-
       <ConfirmBox
         open={dlgDevices}
         successText="DISMISS"
-        onSuccess={() => {
-          setDlgDevices(false);
-        }}
+        onSuccess={() => setDlgDevices(false)}
         title="Mic or webcam not available"
         subTitle="Please connect a mic and webcam to speak and share your video in the meeting. You can also join without them."
       />

@@ -38,13 +38,13 @@ export default function DropDownCam({
                 <DropCAM fillColor={isHovered || open ? "#FFF" : "#B4B4B4"} />
 
               </div>
-              <span className=" overflow-hidden whitespace-nowrap overflow-ellipsis w-full ml-7">
+              <span className="flex-1 min-w-0 truncate ml-3 text-sm">
                 {isCameraPermissionAllowed ? selectedWebcam?.label : "Permission Needed"}
               </span>
 
               <ChevronDownIcon
                 className={`${open ? 'text-orange-300' : 'text-orange-300/70'}
-                ml-8 h-5 w-10 transition duration-150 ease-in-out group-hover:text-orange-300/80 mt-1`}
+                ml-1 h-4 w-4 shrink-0 transition duration-150 ease-in-out group-hover:text-orange-300/80`}
                 aria-hidden="true"
               />
 

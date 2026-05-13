@@ -10,67 +10,42 @@ const WaitingToJoinScreen = () => {
     { index: 1, text: "Almost there..." },
   ];
   const [message, setMessage] = useState(waitingMessages[0]);
-
   const intervalRef = useRef(null);
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       setMessage((s) =>
-        s.index === waitingMessages.length - 1
-          ? s
-          : waitingMessages[s.index + 1]
+        s.index === waitingMessages.length - 1 ? s : waitingMessages[s.index + 1]
       );
     }, 3000);
-
-    return () => {
-      clearInterval(intervalRef.current);
-    };
+    return () => clearInterval(intervalRef.current);
   }, []);
 
   const isTab = useIsTab();
   const isMobile = useIsMobile();
 
-  const animationDefaultOptions = {
-    loop: true,
-    autoplay: true,
-    animationData: animationData,
-    rendererSettings: {
-      preserveAspectRatio: "xMidYMid slice",
-    },
-  };
-
   return (
-    <div
-      className="bg-gray-800"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        // backgroundColor: theme.palette.darkTheme.main,
-      }}
-    >
-      <div className="flex flex-col">
+    <div className="bg-[#F5F6FF] h-screen flex flex-col items-center justify-center font-poppins">
+      <header className="absolute top-0 left-0 right-0 flex justify-center pt-10">
+        <span className="text-[#888CC4] font-bold text-2xl tracking-wider">TYHO</span>
+      </header>
+      <div className="flex flex-col items-center">
         <div
           style={{
-            height: isTab ? 200 : isMobile ? 200 : 250,
-            width: isTab ? 200 : isMobile ? 200 : 250,
+            height: isTab ? 200 : isMobile ? 180 : 240,
+            width: isTab ? 200 : isMobile ? 180 : 240,
           }}
         >
           <Lottie
-            loop={animationDefaultOptions.loop}
-            autoplay={animationDefaultOptions.autoplay}
-            animationData={animationDefaultOptions.animationData}
-            rendererSettings={{
-              preserveAspectRatio:
-                animationDefaultOptions.rendererSettings.preserveAspectRatio,
-            }}
+            loop
+            autoplay
+            animationData={animationData}
+            rendererSettings={{ preserveAspectRatio: "xMidYMid slice" }}
             style={{ height: "100%", width: "100%" }}
           />
         </div>
-        <h1 className="text-white text-center font-bold mt-1 text-xl">
-          {message.text}
-        </h1>
+        <p className="text-[#1B1C27] font-semibold text-lg mt-4 text-center">{message.text}</p>
+        <p className="text-[#888888] text-sm mt-1 text-center">Please wait while we set things up.</p>
       </div>
     </div>
   );

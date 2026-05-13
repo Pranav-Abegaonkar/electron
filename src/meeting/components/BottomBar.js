@@ -3,896 +3,465 @@ import {
   useMeeting,
   usePubSub,
   useMediaDevice,
+  createCameraVideoTrack,
 } from "@videosdk.live/react-sdk";
 import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipboardIcon,
   CheckIcon,
-  ChevronDownIcon,
   EllipsisHorizontalIcon,
 } from "@heroicons/react/24/outline";
+import Lottie from "lottie-react";
 import recordingBlink from "../../static/animations/recording-blink.json";
 import useIsRecording from "../../hooks/useIsRecording";
 import RecordingIcon from "../../icons/Bottombar/RecordingIcon";
-import MicOnIcon from "../../icons/Bottombar/MicOnIcon";
-import MicOffIcon from "../../icons/Bottombar/MicOffIcon";
-import WebcamOnIcon from "../../icons/Bottombar/WebcamOnIcon";
-import WebcamOffIcon from "../../icons/Bottombar/WebcamOffIcon";
-import ScreenShareIcon from "../../icons/Bottombar/ScreenShareIcon";
 import ChatIcon from "../../icons/Bottombar/ChatIcon";
 import ParticipantsIcon from "../../icons/Bottombar/ParticipantsIcon";
 import EndIcon from "../../icons/Bottombar/EndIcon";
 import RaiseHandIcon from "../../icons/Bottombar/RaiseHandIcon";
-import PipIcon from "../../icons/Bottombar/PipIcon";
 import WhiteboardIcon from "../../icons/Bottombar/WhiteboardIcon";
-import { OutlinedButton } from "../../components/buttons/OutlinedButton";
-import useIsTab from "../../hooks/useIsTab";
-import useIsMobile from "../../hooks/useIsMobile";
-import { MobileIconButton } from "../../components/buttons/MobileIconButton";
 import { sideBarModes } from "../../utils/common";
-import { Dialog, Popover, Transition } from "@headlessui/react";
-import { createPopper } from "@popperjs/core";
+import ScreenShareIcon from "../../icons/Bottombar/ScreenShareIcon";
+import { Dialog, Transition } from "@headlessui/react";
 import { useMeetingAppContext } from "../../MeetingAppContextDef";
 import useMediaStream from "../../hooks/useMediaStream";
+import MicDropUp from "../../components/MicDropUp";
+import CamDropUp from "../../components/CamDropUp";
+import VBDropUp from "../../components/VBDropUp";
+import useIsMobile from "../../hooks/useIsMobile";
+import useIsTab from "../../hooks/useIsTab";
 
-function PipBTN({ isMobile, isTab }) {
-  const { pipMode, setPipMode } = useMeetingAppContext();
+// ─── Brand-styled icon button ─────────────────────────────────────────────────
+const BarBtn = React.memo(function BarBtn({
+  Icon, onClick, active, danger, disabled, tooltip, badge, lottieOption, isRequestProcessing,
+}) {
+  const [blink, setBlink] = useState(1);
+  const blinkRef = useRef();
 
-  const getRowCount = (length) => {
-    return length > 2 ? 2 : length > 0 ? 1 : 0;
-  };
-  const getColCount = (length) => {
-    return length < 2 ? 1 : length < 5 ? 2 : 3;
-  };
-
-  const pipWindowRef = useRef(null);
-  const togglePipMode = async () => {
-    //Check if PIP Window is active or not
-    //If active we will turn it off
-    if (pipWindowRef.current) {
-      await document.exitPictureInPicture();
-      pipWindowRef.current = null;
-      return;
-    }
-
-    //Check if browser supports PIP mode else show a message to user
-    if ("pictureInPictureEnabled" in document) {
-      //Creating a Canvas which will render our PIP Stream
-      const source = document.createElement("canvas");
-      const ctx = source.getContext("2d");
-
-      //Create a Video tag which we will popout for PIP
-      const pipVideo = document.createElement("video");
-      pipWindowRef.current = pipVideo;
-      pipVideo.autoplay = true;
-
-      //Creating stream from canvas which we will play
-      const stream = source.captureStream();
-      pipVideo.srcObject = stream;
-      drawCanvas();
-
-      //When Video is ready we will start PIP mode
-      pipVideo.onloadedmetadata = () => {
-        pipVideo.requestPictureInPicture();
-      };
-      await pipVideo.play();
-
-      //When the PIP mode starts, we will start drawing canvas with PIP view
-      pipVideo.addEventListener("enterpictureinpicture", (event) => {
-        drawCanvas();
-        setPipMode(true);
-      });
-
-      //When PIP mode exits, we will dispose the track we created earlier
-      pipVideo.addEventListener("leavepictureinpicture", (event) => {
-        pipWindowRef.current = null;
-        setPipMode(false);
-        pipVideo.srcObject.getTracks().forEach((track) => track.stop());
-      });
-
-      //These will draw all the video elements in to the Canvas
-      function drawCanvas() {
-        //Getting all the video elements in the document
-        const videos = document.querySelectorAll("video");
-        try {
-          //Perform initial black paint on the canvas
-          ctx.fillStyle = "black";
-          ctx.fillRect(0, 0, source.width, source.height);
-
-          //Drawing the participant videos on the canvas in the grid format
-          const rows = getRowCount(videos.length);
-          const columns = getColCount(videos.length);
-          for (let i = 0; i < rows; i++) {
-            for (let j = 0; j < columns; j++) {
-              if (j + i * columns <= videos.length || videos.length === 1) {
-                ctx.drawImage(
-                  videos[j + i * columns],
-                  j < 1 ? 0 : source.width / (columns / j),
-                  i < 1 ? 0 : source.height / (rows / i),
-                  source.width / columns,
-                  source.height / rows
-                );
-              }
-            }
-          }
-        } catch (error) {
-          console.log(error);
-        }
-
-        //If pip mode is on, keep drawing the canvas when ever new frame is requested
-        if (document.pictureInPictureElement === pipVideo) {
-          requestAnimationFrame(drawCanvas);
-        }
-      }
+  useEffect(() => {
+    if (isRequestProcessing) {
+      blinkRef.current = setInterval(() => setBlink((s) => (s === 1 ? 0.4 : 1)), 600);
     } else {
-      alert("PIP is not supported by your browser");
+      clearInterval(blinkRef.current);
+      setBlink(1);
     }
-  };
+    return () => clearInterval(blinkRef.current);
+  }, [isRequestProcessing]);
 
-  return isMobile || isTab ? (
-    <MobileIconButton
-      id="pip-btn"
-      tooltipTitle={pipMode ? "Stop PiP" : "Start Pip"}
-      buttonText={pipMode ? "Stop PiP" : "Start Pip"}
-      isFocused={pipMode}
-      Icon={PipIcon}
-      onClick={() => {
-        togglePipMode();
-      }}
-      disabled={false}
-    />
-  ) : (
-    <OutlinedButton
-      Icon={PipIcon}
-      onClick={() => {
-        togglePipMode();
-      }}
-      isFocused={pipMode}
-      tooltip={pipMode ? "Stop PiP" : "Start Pip"}
-      disabled={false}
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={tooltip}
+      className={`relative flex items-center justify-center p-2.5 rounded-lg border transition-colors 
+        ${danger
+          ? "bg-red-500 hover:bg-red-600 border-red-500"
+          : active
+            ? "bg-[#F5F6FF] border-[#888CC4]"
+            : "bg-white border-[#EEEEEE] hover:bg-[#F5F6FF] hover:border-[#888CC4]"
+        }
+        ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+      style={{ opacity: blink }}
+    >
+      {lottieOption ? (
+        <div style={{ height: 20, width: 48 }}>
+          <Lottie
+            loop={lottieOption.loop}
+            animationData={lottieOption.animationData}
+            rendererSettings={lottieOption.rendererSettings}
+            style={{ height: "100%", width: "100%" }}
+          />
+        </div>
+      ) : (
+        Icon && (
+          <Icon
+            style={{ height: 20, width: 20 }}
+            fillcolor={danger ? "#fff" : active ? "#888CC4" : "#1B1C27"}
+          />
+        )
+      )}
+      {badge && (
+        <span className="absolute -top-1 -right-1 bg-[#888CC4] text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold font-poppins">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+});
+
+// ─── Mic split-button (file-level) ────────────────────────────────────────────
+function MicBTN() {
+  const { isMicrophonePermissionAllowed } = useMeetingAppContext();
+  const mMeeting = useMeeting();
+  const [mics, setMics] = useState([]);
+  const [speakers, setSpeakers] = useState([]);
+  const { getMicrophones, getPlaybackDevices } = useMediaDevice({ onDeviceChanged });
+
+  function onDeviceChanged() { loadDevices(); }
+
+  const loadDevices = async () => {
+    const [m, s] = await Promise.all([getMicrophones(), getPlaybackDevices()]);
+    if (m?.length) setMics(m);
+    if (s?.length) setSpeakers(s);
+  };
+  // eslint-disable-next-line
+  useEffect(() => { loadDevices(); }, []);
+
+  return (
+    <MicDropUp
+      micOn={mMeeting.localMicOn}
+      onToggle={() => mMeeting.toggleMic()}
+      mics={mics}
+      speakers={speakers}
+      changeMic={mMeeting.changeMic}
+      isMicrophonePermissionAllowed={isMicrophonePermissionAllowed}
+      openUpward
     />
   );
 }
 
-const MicBTN = () => {
-  const {
-    selectedMic,
-    setSelectedMic,
-    selectedSpeaker,
-    setSelectedSpeaker,
-    isMicrophonePermissionAllowed,
-  } = useMeetingAppContext();
-
-  const { getMicrophones, getPlaybackDevices } = useMediaDevice();
-
-  const mMeeting = useMeeting();
-  const [mics, setMics] = useState([]);
-  const [speakers, setSpeakers] = useState([]);
-  const localMicOn = mMeeting?.localMicOn;
-  const changeMic = mMeeting?.changeMic;
-
-  useMediaDevice({
-    onDeviceChanged
-  })
-
-  function onDeviceChanged(devices) {
-    getMics();
-    const newSpeakerList = devices.devices.filter(device => device.kind === 'audiooutput');
-
-    if (newSpeakerList.length > 0) {
-      setSelectedSpeaker({ id: newSpeakerList[0].deviceId, label: newSpeakerList[0].label });
-    }
-
-  }
-
-
-
-  const getMics = async () => {
-    const mics = await getMicrophones();
-    const speakers = await getPlaybackDevices();
-
-    mics && mics?.length && setMics(mics);
-    speakers && speakers?.length && setSpeakers(speakers);
-  };
-
-  const [tooltipShow, setTooltipShow] = useState(false);
-  const btnRef = useRef();
-  const tooltipRef = useRef();
-
-  const openTooltip = () => {
-    createPopper(btnRef.current, tooltipRef.current, {
-      placement: "top",
-    });
-    setTooltipShow(true);
-  };
-  const closeTooltip = () => {
-    setTooltipShow(false);
-  };
-
-  return (
-    <>
-      <OutlinedButton
-        Icon={localMicOn ? MicOnIcon : MicOffIcon}
-        onClick={() => {
-          mMeeting.toggleMic();
-        }}
-        bgColor={localMicOn ? "bg-gray-750" : "bg-white"}
-        borderColor={localMicOn && "#ffffff33"}
-        isFocused={localMicOn}
-        focusIconColor={localMicOn && "white"}
-        tooltip={"Toggle Mic"}
-        renderRightComponent={() => {
-          return (
-            <>
-              <Popover className="relative">
-                {({ close }) => (
-                  <>
-                    <Popover.Button
-                      disabled={!isMicrophonePermissionAllowed}
-                      className="flex items-center justify-center mt-1 mr-1 focus:outline-none"
-                    >
-                      <div
-                        ref={btnRef}
-                        onMouseEnter={openTooltip}
-                        onMouseLeave={closeTooltip}
-                      >
-                        <button
-                          onClick={() => {
-                            getMics();
-                          }}
-                        >
-                          <ChevronDownIcon
-                            className="h-4 w-4"
-                            style={{
-                              color: mMeeting.localMicOn ? "white" : "black",
-                            }}
-                          />
-                        </button>
-                      </div>
-                    </Popover.Button>
-                    <Transition
-                      as={Fragment}
-                      enter="transition ease-out duration-200"
-                      enterFrom="opacity-0 translate-y-1"
-                      enterTo="opacity-100 translate-y-0"
-                      leave="transition ease-in duration-150"
-                      leaveFrom="opacity-100 translate-y-0"
-                      leaveTo="opacity-0 translate-y-1"
-                    >
-                      <Popover.Panel className="absolute left-1/2 bottom-full z-10 mt-3 w-72 -translate-x-1/2 transform px-4 sm:px-0 pb-4">
-                        <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5">
-                          <div className={" bg-gray-750 py-1"}>
-                            <div>
-                              <div className="flex items-center p-3 pb-0">
-                                <p className="ml-3 text-sm text-gray-900">
-                                  {"MICROPHONE"}
-                                </p>
-                              </div>
-                              <div className="flex flex-col">
-                                {mics.map(({ deviceId, label }, index) => (
-                                  <div
-                                    className={`px-3 py-1 my-1 pl-6 text-white text-left ${deviceId === selectedMic.id &&
-                                      "bg-gray-150"
-                                      }`}
-                                  >
-                                    <button
-                                      className={`flex flex-1 w-full text-left ${deviceId === selectedMic.id &&
-                                        "bg-gray-150"
-                                        }`}
-                                      key={`mics_${deviceId}`}
-                                      onClick={() => {
-                                        setSelectedMic({ id: deviceId });
-                                        changeMic(deviceId);
-                                        close();
-                                      }}
-                                    >
-                                      {label || `Mic ${index + 1}`}
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            <hr className="border border-gray-50 mt-2 mb-1" />
-                            <div>
-                              <div className="flex p-3 pb-0">
-                                <p className="ml-3 text-sm text-gray-900  text-center">
-                                  {"SPEAKER"}
-                                </p>
-                              </div>
-                              <div className="flex flex-col ">
-                                {speakers.map(({ deviceId, label }, index) => (
-                                  <div
-                                    className={`px-3 py-1 my-1 pl-6 text-white ${deviceId === selectedSpeaker.id &&
-                                      "bg-gray-150"
-                                      }`}
-                                  >
-                                    <button
-                                      className={`flex flex-1 w-full text-left ${deviceId === selectedSpeaker.id &&
-                                        "bg-gray-150"
-                                        }`}
-                                      key={`speakers_${deviceId}`}
-                                      onClick={() => {
-                                        setSelectedSpeaker({ id: deviceId });
-                                        close();
-                                      }}
-                                    >
-                                      {label || `Speaker ${index + 1}`}
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Popover.Panel>
-                    </Transition>
-                  </>
-                )}
-              </Popover>
-              <div
-                style={{ zIndex: 999 }}
-                className={`${tooltipShow ? "" : "hidden"
-                  } overflow-hidden flex flex-col items-center justify-center pb-4`}
-                ref={tooltipRef}
-              >
-                <div className={"rounded-md p-1.5 bg-black "}>
-                  <p className="text-base text-white ">{"Change microphone"}</p>
-                </div>
-              </div>
-            </>
-          );
-        }}
-      />
-    </>
-  );
-};
-
-const WebCamBTN = () => {
-  const { selectedWebcam, setSelectedWebcam, isCameraPermissionAllowed } =
-    useMeetingAppContext();
-
-  const { getCameras } = useMediaDevice();
+// ─── Webcam split-button (file-level) ─────────────────────────────────────────
+function WebCamBTN() {
+  const { selectedWebcam, isCameraPermissionAllowed } = useMeetingAppContext();
   const mMeeting = useMeeting();
   const [webcams, setWebcams] = useState([]);
+  const { getCameras } = useMediaDevice();
   const { getVideoTrack } = useMediaStream();
 
-  const localWebcamOn = mMeeting?.localWebcamOn;
+  useEffect(() => {
+    getCameras().then((cams) => { if (cams?.length) setWebcams(cams); });
+    // eslint-disable-next-line
+  }, []);
+
+  return (
+    <CamDropUp
+      webcamOn={mMeeting.localWebcamOn}
+      onToggle={async () => {
+        let track;
+        if (!mMeeting.localWebcamOn) track = await getVideoTrack({ webcamId: selectedWebcam.id });
+        mMeeting.toggleWebcam(track);
+      }}
+      webcams={webcams}
+      changeWebcam={mMeeting.changeWebcam}
+      isCameraPermissionAllowed={isCameraPermissionAllowed}
+      openUpward
+    />
+  );
+}
+
+// ─── Raise hand (file-level) ──────────────────────────────────────────────────
+function RaiseHandBTN() {
+  const { publish } = usePubSub("RAISE_HAND");
+  return (
+    <BarBtn
+      Icon={RaiseHandIcon}
+      onClick={() => { try { publish("Raise Hand"); } catch (e) { console.log("pubsub error", e); } }}
+      tooltip="Raise Hand"
+    />
+  );
+}
+
+// ─── Whiteboard (file-level) ──────────────────────────────────────────────────
+function WhiteBoardBTN() {
+  const { whiteboardStarted } = useMeetingAppContext();
+  const { publish: publishWBControl } = usePubSub("WB_CONTROL");
+  const { presenterId } = useMeeting();
+  return (
+    <BarBtn
+      Icon={WhiteboardIcon}
+      onClick={() => publishWBControl(JSON.stringify({ event: whiteboardStarted ? "STOP" : "START" }), { persist: true })}
+      active={whiteboardStarted}
+      tooltip={whiteboardStarted ? "Stop Whiteboard" : "Start Whiteboard"}
+      disabled={!!presenterId && !whiteboardStarted}
+    />
+  );
+}
+
+// ─── Recording (file-level) ───────────────────────────────────────────────────
+function RecordingBTN() {
+  const { startRecording, stopRecording, recordingState } = useMeeting();
+  const defaultOptions = {
+    loop: true,
+    autoplay: true,
+    animationData: recordingBlink,
+    rendererSettings: { preserveAspectRatio: "xMidYMid slice" },
+    height: 64,
+    width: 160,
+  };
+  const isRecording = useIsRecording();
+  const isRecordingRef = useRef(isRecording);
+  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
+
+  const { isRequestProcessing } = useMemo(
+    () => ({
+      isRequestProcessing:
+        recordingState === Constants.recordingEvents.RECORDING_STARTING ||
+        recordingState === Constants.recordingEvents.RECORDING_STOPPING,
+    }),
+    [recordingState]
+  );
+
+  const tooltip =
+    recordingState === Constants.recordingEvents.RECORDING_STARTED ? "Stop Recording" :
+      recordingState === Constants.recordingEvents.RECORDING_STARTING ? "Starting Recording" :
+        recordingState === Constants.recordingEvents.RECORDING_STOPPED ? "Start Recording" :
+          recordingState === Constants.recordingEvents.RECORDING_STOPPING ? "Stopping Recording" :
+            "Start Recording";
+
+  return (
+    <BarBtn
+      Icon={RecordingIcon}
+      onClick={() => { if (isRecordingRef.current) stopRecording(); else startRecording(); }}
+      active={isRecording}
+      tooltip={tooltip}
+      lottieOption={isRecording ? defaultOptions : null}
+      isRequestProcessing={isRequestProcessing}
+    />
+  );
+}
+
+// ─── Leave (file-level, needs setIsMeetingLeft prop) ──────────────────────────
+function LeaveBTN({ setIsMeetingLeft }) {
+  const { leave } = useMeeting();
+  return (
+    <BarBtn
+      Icon={EndIcon}
+      danger
+      onClick={() => { leave(); setIsMeetingLeft(true); }}
+      tooltip="Leave Meeting"
+    />
+  );
+}
+
+// ─── Chat toggle (file-level) ─────────────────────────────────────────────────
+function ChatBTN() {
+  const { sideBarMode, setSideBarMode } = useMeetingAppContext();
+  return (
+    <BarBtn
+      Icon={ChatIcon}
+      onClick={() => setSideBarMode((s) => (s === sideBarModes.CHAT ? null : sideBarModes.CHAT))}
+      active={sideBarMode === sideBarModes.CHAT}
+      tooltip="View Chat"
+    />
+  );
+}
+
+const BASE_VB_URL = "https://cdn.videosdk.live/virtual-background";
+const backgroundImageArr = [
+  { previewImageUrl: `${BASE_VB_URL}/webcam-no-filter-preview.png`, type: "DEFAULT" },
+  { previewImageUrl: `${BASE_VB_URL}/webcam-blur-preview.png`, type: "blur" },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/san-fran-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/san-fran.jpeg` },
+  { previewImageUrl: `${BASE_VB_URL}/hill-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/hill.jpeg`, type: "image" },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/cloud-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/cloud.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/beach-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/beach.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/white-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/white-wall.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/wall-with-pot-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/wall-with-pot.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/window-conference-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/window-conference.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/sky-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/sky.jpeg` },
+  { previewImageUrl: `${BASE_VB_URL}/red-mix-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/red-mix.jpeg`, type: "image" },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/blue-mix-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/blue-mix.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/coffe-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/coffe-wall.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/paper-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/paper-wall.jpeg` },
+  { type: "image", previewImageUrl: `${BASE_VB_URL}/design-wall-preview.png`, backgroudImageUrl: `${BASE_VB_URL}/design-wall.jpeg` },
+];
+
+function VBBTN() {
+  const { videoProcessor, selectedWebcam, type, setType, img, setImg } = useMeetingAppContext();
+  const mMeeting = useMeeting();
   const changeWebcam = mMeeting?.changeWebcam;
+  const localWebcamOn = mMeeting?.localWebcamOn;
+  const localMicOn = mMeeting?.localMicOn;
 
-  const getWebcams = async () => {
-    let webcams = await getCameras();
-    webcams && webcams?.length && setWebcams(webcams);
-  };
+  let activeVBIndex = 0;
+  if (type === "blur") activeVBIndex = 1;
+  else if (type === "image") {
+    const idx = backgroundImageArr.findIndex((b) => b.backgroudImageUrl === img);
+    if (idx !== -1) activeVBIndex = idx;
+  }
 
-  const [tooltipShow, setTooltipShow] = useState(false);
-  const btnRef = useRef();
-  const tooltipRef = useRef();
+  const handleSelectBackground = async ({ type: newType, backgroudImageUrl }, index) => {
+    setImg(backgroudImageUrl || null);
+    setType(newType);
 
-  const openTooltip = () => {
-    createPopper(btnRef.current, tooltipRef.current, {
-      placement: "top",
+    if (!videoProcessor.ready) {
+      await videoProcessor.init();
+    }
+
+    const stream = await createCameraVideoTrack({
+      cameraId: selectedWebcam?.id,
+      encoderConfig: localMicOn ? "h720p_w1280p" : "h360p_w640p",
+      multiStream: false,
     });
-    setTooltipShow(true);
+
+    if (newType === "DEFAULT") {
+      try {
+        if (videoProcessor.processorRunning || !localWebcamOn) {
+          videoProcessor.stop();
+          changeWebcam(stream);
+        }
+        return;
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    if (!videoProcessor.processorRunning) {
+      try {
+        const processedStream = await videoProcessor.start(stream, {
+          type: newType,
+          imageUrl: backgroudImageUrl,
+        });
+        changeWebcam(processedStream);
+      } catch (error) {
+        console.log(error);
+      }
+    } else {
+      videoProcessor.updateProcessorConfig({ type: newType, imageUrl: backgroudImageUrl });
+    }
   };
-  const closeTooltip = () => {
-    setTooltipShow(false);
+
+  const _toggleVB = () => {
+    if (activeVBIndex !== 0) {
+      handleSelectBackground({ type: "DEFAULT" }, 0);
+    } else {
+      handleSelectBackground(backgroundImageArr[1], 1);
+    }
   };
 
   return (
-    <>
-      <OutlinedButton
-        Icon={localWebcamOn ? WebcamOnIcon : WebcamOffIcon}
-        onClick={async () => {
-          let track;
-          if (!localWebcamOn) {
-            track = await getVideoTrack({
-              webcamId: selectedWebcam.id,
-            });
-          }
-          mMeeting.toggleWebcam(track);
-        }}
-        bgColor={localWebcamOn ? "bg-gray-750" : "bg-white"}
-        borderColor={localWebcamOn && "#ffffff33"}
-        isFocused={localWebcamOn}
-        focusIconColor={localWebcamOn && "white"}
-        tooltip={"Toggle Webcam"}
-        renderRightComponent={() => {
-          return (
-            <>
-              <Popover className="relative">
-                {({ close }) => (
-                  <>
-                    <Popover.Button
-                      disabled={!isCameraPermissionAllowed}
-                      className="flex items-center justify-center mt-1 mr-1 focus:outline-none"
-                    >
-                      <div
-                        ref={btnRef}
-                        onMouseEnter={openTooltip}
-                        onMouseLeave={closeTooltip}
-                      >
-                        <button
-                          onClick={() => {
-                            getWebcams();
-                          }}
-                        >
-                          <ChevronDownIcon
-                            className="h-4 w-4"
-                            style={{
-                              color: localWebcamOn ? "white" : "black",
-                            }}
-                          />
-                        </button>
-                      </div>
-                    </Popover.Button>
-                    <Transition
-                      as={Fragment}
-                      enter="transition ease-out duration-200"
-                      enterFrom="opacity-0 translate-y-1"
-                      enterTo="opacity-100 translate-y-0"
-                      leave="transition ease-in duration-150"
-                      leaveFrom="opacity-100 translate-y-0"
-                      leaveTo="opacity-0 translate-y-1"
-                    >
-                      <Popover.Panel className="absolute left-1/2 bottom-full z-10 mt-3 w-72 -translate-x-1/2 transform px-4 sm:px-0 pb-4">
-                        <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5">
-                          <div className={" bg-gray-750 py-1"}>
-                            <div>
-                              <div className="flex items-center p-3 pb-0">
-                                <p className="ml-3 text-sm text-gray-900">
-                                  {"WEBCAM"}
-                                </p>
-                              </div>
-                              <div className="flex flex-col">
-                                {webcams.map(({ deviceId, label }, index) => (
-                                  <div
-                                    className={`px-3 py-1 my-1 pl-6 text-white ${deviceId === selectedWebcam.id &&
-                                      "bg-gray-150"
-                                      }`}
-                                  >
-                                    <button
-                                      className={`flex flex-1 w-full text-left ${deviceId === selectedWebcam.id &&
-                                        "bg-gray-150"
-                                        }`}
-                                      key={`output_webcams_${deviceId}`}
-                                      onClick={() => {
-                                        setSelectedWebcam({ id: deviceId });
-                                        changeWebcam(deviceId);
-                                        close();
-                                      }}
-                                    >
-                                      {label || `Webcam ${index + 1}`}
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Popover.Panel>
-                    </Transition>
-                  </>
-                )}
-              </Popover>
-              <div
-                style={{ zIndex: 999 }}
-                className={`${tooltipShow ? "" : "hidden"
-                  } overflow-hidden flex flex-col items-center justify-center pb-4`}
-                ref={tooltipRef}
-              >
-                <div className={"rounded-md p-1.5 bg-black "}>
-                  <p className="text-base text-white ">{"Change webcam"}</p>
-                </div>
-              </div>
-            </>
-          );
-        }}
-      />
-    </>
+    <VBDropUp
+      vbOn={activeVBIndex !== 0}
+      onToggle={_toggleVB}
+      backgroundImages={backgroundImageArr}
+      activeVBIndex={activeVBIndex}
+      handleSelectBackground={handleSelectBackground}
+      openUpward
+    />
   );
-};
+}
 
-export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
-  const { sideBarMode, setSideBarMode, whiteboardStarted } = useMeetingAppContext();
-  const RaiseHandBTN = ({ isMobile, isTab }) => {
-    const { publish } = usePubSub("RAISE_HAND");
-    const RaiseHand = () => {
-      try {
-        publish("Raise Hand");
-      } catch (e) {
-        console.log("Error in pubsub", e)
-      }
-    };
+// ─── Participants toggle (file-level) ─────────────────────────────────────────
+function ParticipantsBTN() {
+  const { sideBarMode, setSideBarMode } = useMeetingAppContext();
+  const { participants } = useMeeting();
+  return (
+    <BarBtn
+      Icon={ParticipantsIcon}
+      onClick={() => setSideBarMode((s) => (s === sideBarModes.PARTICIPANTS ? null : sideBarModes.PARTICIPANTS))}
+      active={sideBarMode === sideBarModes.PARTICIPANTS}
+      tooltip="View Participants"
+      badge={`${new Map(participants)?.size}`}
+    />
+  );
+}
+// ─── Screen share (file-level) ────────────────────────────────────────────────
+function ScreenShareBTN() {
+  const { localScreenShareOn, toggleScreenShare, presenterId } = useMeeting();
+  const isMobile = useIsMobile();
+  const isTab = useIsTab();
 
-    return isMobile || isTab ? (
-      <MobileIconButton
-        id="RaiseHandBTN"
-        tooltipTitle={"Raise hand"}
-        Icon={RaiseHandIcon}
-        onClick={RaiseHand}
-        buttonText={"Raise Hand"}
-      />
-    ) : (
-      <OutlinedButton
-        onClick={RaiseHand}
-        tooltip={"Raise Hand"}
-        Icon={RaiseHandIcon}
-      />
-    );
-  };
+  return (
+    <BarBtn
+      Icon={ScreenShareIcon}
+      onClick={() => toggleScreenShare()}
+      active={localScreenShareOn}
+      tooltip={localScreenShareOn ? "Stop Presenting" : "Present Screen"}
+      disabled={presenterId ? (localScreenShareOn ? false : true) : (isMobile || isTab)}
+    />
+  );
+}
 
-  const WhiteBoardBTN = ({ isMobile, isTab }) => {
-    // Use WB_CONTROL PubSub to broadcast start/stop to all participants.
-    // whiteboardStarted in context is kept in sync by MeetingContainer's
-    // WB_CONTROL listener so the button reflects the correct state for everyone.
-    const { publish: publishWBControl } = usePubSub("WB_CONTROL");
-    const { presenterId } = useMeeting();
-
-    const handleWhiteboardToggle = () => {
-      const event = whiteboardStarted ? "STOP" : "START";
-      publishWBControl(JSON.stringify({ event }), { persist: true });
-    };
-
-    return isMobile || isTab ? (
-      <MobileIconButton
-        id="whiteboard-btn"
-        tooltipTitle={whiteboardStarted ? "Stop Whiteboard" : "Start Whiteboard"}
-        buttonText={whiteboardStarted ? "Stop Board" : "Whiteboard"}
-        isFocused={whiteboardStarted}
-        Icon={WhiteboardIcon}
-        onClick={handleWhiteboardToggle}
-        disabled={!!presenterId && !whiteboardStarted}
-      />
-    ) : (
-      <OutlinedButton
-        Icon={WhiteboardIcon}
-        onClick={handleWhiteboardToggle}
-        isFocused={whiteboardStarted}
-        tooltip={whiteboardStarted ? "Stop Whiteboard" : "Start Whiteboard"}
-        disabled={!!presenterId && !whiteboardStarted}
-      />
-    );
-  };
-
-
-  const RecordingBTN = () => {
-    const { startRecording, stopRecording, recordingState } = useMeeting();
-    const defaultOptions = {
-      loop: true,
-      autoplay: true,
-      animationData: recordingBlink,
-      rendererSettings: {
-        preserveAspectRatio: "xMidYMid slice",
-      },
-      height: 64,
-      width: 160,
-    };
-
-    const isRecording = useIsRecording();
-    const isRecordingRef = useRef(isRecording);
-
-    useEffect(() => {
-      isRecordingRef.current = isRecording;
-    }, [isRecording]);
-
-    const { isRequestProcessing } = useMemo(
-      () => ({
-        isRequestProcessing:
-          recordingState === Constants.recordingEvents.RECORDING_STARTING ||
-          recordingState === Constants.recordingEvents.RECORDING_STOPPING,
-      }),
-      [recordingState]
-    );
-
-    const _handleClick = () => {
-      const isRecording = isRecordingRef.current;
-
-      if (isRecording) {
-        stopRecording();
-      } else {
-        startRecording();
-      }
-    };
-
-    return (
-      <OutlinedButton
-        Icon={RecordingIcon}
-        onClick={_handleClick}
-        isFocused={isRecording}
-        tooltip={
-          recordingState === Constants.recordingEvents.RECORDING_STARTED
-            ? "Stop Recording"
-            : recordingState === Constants.recordingEvents.RECORDING_STARTING
-              ? "Starting Recording"
-              : recordingState === Constants.recordingEvents.RECORDING_STOPPED
-                ? "Start Recording"
-                : recordingState === Constants.recordingEvents.RECORDING_STOPPING
-                  ? "Stopping Recording"
-                  : "Start Recording"
+// ─── Meeting ID copy (file-level) ─────────────────────────────────────────────
+function MeetingIdCopyBTN() {
+  const { meetingId } = useMeeting();
+  const [isCopied, setIsCopied] = useState(false);
+  return (
+    <div className="flex bg-[#F5F5F5] border border-[#EEEEEE] rounded-lg px-3 py-2 items-center gap-2">
+      <p className="text-[#1B1C27] text-sm font-poppins select-none">{meetingId}</p>
+      <button
+        onClick={() => {
+          navigator.clipboard.writeText(meetingId);
+          setIsCopied(true);
+          setTimeout(() => setIsCopied(false), 3000);
+        }}
+      >
+        {isCopied
+          ? <CheckIcon className="h-4 w-4 text-green-500" />
+          : <ClipboardIcon className="h-4 w-4 text-[#888CC4]" />
         }
-        lottieOption={isRecording ? defaultOptions : null}
-        isRequestProcessing={isRequestProcessing}
-      />
-    );
-  };
+      </button>
+    </div>
+  );
+}
 
-  // const ScreenShareBTN = ({ isMobile, isTab }) => {
-  //   const { localScreenShareOn, toggleScreenShare, presenterId } = useMeeting();
-
-  //   return isMobile || isTab ? (
-  //     <MobileIconButton
-  //       id="screen-share-btn"
-  //       tooltipTitle={
-  //         presenterId
-  //           ? localScreenShareOn
-  //             ? "Stop Presenting"
-  //             : null
-  //           : "Present Screen"
-  //       }
-  //       buttonText={
-  //         presenterId
-  //           ? localScreenShareOn
-  //             ? "Stop Presenting"
-  //             : null
-  //           : "Present Screen"
-  //       }
-  //       isFocused={localScreenShareOn}
-  //       Icon={ScreenShareIcon}
-  //       onClick={() => {
-  //         toggleScreenShare();
-  //       }}
-  //       disabled={
-  //         presenterId
-  //           ? localScreenShareOn
-  //             ? false
-  //             : true
-  //           : isMobile
-  //             ? true
-  //             : false
-  //       }
-  //     />
-  //   ) : (
-  //     <OutlinedButton
-  //       Icon={ScreenShareIcon}
-  //       onClick={() => {
-  //         toggleScreenShare();
-  //       }}
-  //       isFocused={localScreenShareOn}
-  //       tooltip={
-  //         presenterId
-  //           ? localScreenShareOn
-  //             ? "Stop Presenting"
-  //             : null
-  //           : "Present Screen"
-  //       }
-  //       disabled={presenterId ? (localScreenShareOn ? false : true) : false}
-  //     />
-  //   );
-  // };
-
-  const LeaveBTN = () => {
-    const { leave } = useMeeting();
-
-    return (
-      <OutlinedButton
-        Icon={EndIcon}
-        bgColor="bg-red-150"
-        onClick={() => {
-          leave();
-          setIsMeetingLeft(true);
-        }}
-        tooltip="Leave Meeting"
-      />
-    );
-  };
-
-  const ChatBTN = ({ isMobile, isTab }) => {
-    return isMobile || isTab ? (
-      <MobileIconButton
-        tooltipTitle={"Chat"}
-        buttonText={"Chat"}
-        Icon={ChatIcon}
-        isFocused={sideBarMode === sideBarModes.CHAT}
-        onClick={() => {
-          setSideBarMode((s) =>
-            s === sideBarModes.CHAT ? null : sideBarModes.CHAT
-          );
-        }}
-      />
-    ) : (
-      <OutlinedButton
-        Icon={ChatIcon}
-        onClick={() => {
-          setSideBarMode((s) =>
-            s === sideBarModes.CHAT ? null : sideBarModes.CHAT
-          );
-        }}
-        isFocused={sideBarMode === "CHAT"}
-        tooltip="View Chat"
-      />
-    );
-  };
-
-  const ParticipantsBTN = ({ isMobile, isTab }) => {
-    const { participants } = useMeeting();
-    return isMobile || isTab ? (
-      <MobileIconButton
-        tooltipTitle={"Participants"}
-        isFocused={sideBarMode === sideBarModes.PARTICIPANTS}
-        buttonText={"Participants"}
-        disabledOpacity={1}
-        Icon={ParticipantsIcon}
-        onClick={() => {
-          setSideBarMode((s) =>
-            s === sideBarModes.PARTICIPANTS ? null : sideBarModes.PARTICIPANTS
-          );
-        }}
-        badge={`${new Map(participants)?.size}`}
-      />
-    ) : (
-      <OutlinedButton
-        Icon={ParticipantsIcon}
-        onClick={() => {
-          setSideBarMode((s) =>
-            s === sideBarModes.PARTICIPANTS ? null : sideBarModes.PARTICIPANTS
-          );
-        }}
-        isFocused={sideBarMode === sideBarModes.PARTICIPANTS}
-        tooltip={"View \nParticipants"}
-        badge={`${new Map(participants)?.size}`}
-      />
-    );
-  };
-
-  const MeetingIdCopyBTN = () => {
-    const { meetingId } = useMeeting();
-    const [isCopied, setIsCopied] = useState(false);
-    return (
-      <div className="flex items-center justify-center lg:ml-0 ml-4 mt-4 xl:mt-0">
-        <div className="flex border-2 border-gray-850 p-2 rounded-md items-center justify-center">
-          <h1 className="text-white text-base ">{meetingId}</h1>
-          <button
-            className="ml-2"
-            onClick={() => {
-              navigator.clipboard.writeText(meetingId);
-              setIsCopied(true);
-              setTimeout(() => {
-                setIsCopied(false);
-              }, 3000);
-            }}
-          >
-            {isCopied ? (
-              <CheckIcon className="h-5 w-5 text-green-400" />
-            ) : (
-              <ClipboardIcon className="h-5 w-5 text-white" />
-            )}
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const tollTipEl = useRef();
+// ─── Bottom bar ───────────────────────────────────────────────────────────────
+export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
   const isMobile = useIsMobile();
   const isTab = useIsTab();
   const [open, setOpen] = useState(false);
 
-  const handleClickFAB = () => {
-    setOpen(true);
-  };
-
-  const handleCloseFAB = () => {
-    setOpen(false);
-  };
-
-  const BottomBarButtonTypes = useMemo(
-    () => ({
-      END_CALL: "END_CALL",
-      CHAT: "CHAT",
-      PARTICIPANTS: "PARTICIPANTS",
-      SCREEN_SHARE: "SCREEN_SHARE",
-      WEBCAM: "WEBCAM",
-      MIC: "MIC",
-      RAISE_HAND: "RAISE_HAND",
-      RECORDING: "RECORDING",
-      PIP: "PIP",
-      MEETING_ID_COPY: "MEETING_ID_COPY",
-      WHITEBOARD: "WHITEBOARD",
-    }),
-    []
-  );
-
-  const otherFeatures = [
-    { icon: BottomBarButtonTypes.RAISE_HAND },
-    { icon: BottomBarButtonTypes.WHITEBOARD },
-    { icon: BottomBarButtonTypes.PIP },
-    { icon: BottomBarButtonTypes.SCREEN_SHARE },
-    { icon: BottomBarButtonTypes.CHAT },
-    { icon: BottomBarButtonTypes.PARTICIPANTS },
-    { icon: BottomBarButtonTypes.MEETING_ID_COPY },
-  ];
-
   return isMobile || isTab ? (
     <div
-      className="flex items-center justify-center"
+      className="flex items-center justify-center gap-2 bg-white border-t border-[#EEEEEE] px-3"
       style={{ height: bottomBarHeight }}
     >
-      <LeaveBTN />
+      <LeaveBTN setIsMeetingLeft={setIsMeetingLeft} />
       <MicBTN />
       <WebCamBTN />
       <RecordingBTN />
-      <OutlinedButton Icon={EllipsisHorizontalIcon} onClick={handleClickFAB} />
-      <Transition appear show={Boolean(open)} as={Fragment}>
-        <Dialog
-          as="div"
-          className="relative"
-          style={{ zIndex: 9999 }}
-          onClose={handleCloseFAB}
-        >
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
-          </Transition.Child>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center justify-center p-2.5 rounded-lg border border-[#EEEEEE] bg-white hover:bg-[#F5F6FF] transition-colors"
+      >
+        <EllipsisHorizontalIcon className="w-5 h-5 text-[#1B1C27]" />
+      </button>
 
+      <Transition appear show={Boolean(open)} as={Fragment}>
+        <Dialog as="div" className="relative" style={{ zIndex: 9999 }} onClose={() => setOpen(false)}>
           <Transition.Child
             as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="translate-y-full opacity-0 scale-95"
-            enterTo="translate-y-0 opacity-100 scale-100"
-            leave="ease-in duration-200"
-            leaveFrom="translate-y-0 opacity-100 scale-100"
-            leaveTo="translate-y-full opacity-0 scale-95"
+            enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100"
+            leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-[#1B1C27] bg-opacity-30" />
+          </Transition.Child>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300" enterFrom="translate-y-full opacity-0" enterTo="translate-y-0 opacity-100"
+            leave="ease-in duration-200" leaveFrom="translate-y-0 opacity-100" leaveTo="translate-y-full opacity-0"
           >
             <div className="fixed inset-0 overflow-y-hidden">
-              <div className="flex h-full items-end justify-end text-center">
-                <Dialog.Panel className="w-screen transform overflow-hidden bg-gray-800 shadow-xl transition-all">
-                  <div className="grid container bg-gray-800 py-6">
-                    <div className="grid grid-cols-12 gap-2">
-                      {otherFeatures.map(({ icon }) => {
-                        return (
-                          <div
-                            className={`grid items-center justify-center ${icon === BottomBarButtonTypes.MEETING_ID_COPY
-                              ? "col-span-7 sm:col-span-5 md:col-span-3"
-                              : "col-span-4 sm:col-span-3 md:col-span-2"
-                              }`}
-                          >
-                            {icon === BottomBarButtonTypes.RAISE_HAND ? (
-                              <RaiseHandBTN isMobile={isMobile} isTab={isTab} />
-                            ) : icon === BottomBarButtonTypes.WHITEBOARD ? (
-                              <WhiteBoardBTN isMobile={isMobile} isTab={isTab} />
-                            )
-                              //  : icon === BottomBarButtonTypes.SCREEN_SHARE ? (
-                              //   <ScreenShareBTN
-                              //     isMobile={isMobile}
-                              //     isTab={isTab}
-                              //   />
-                              // )
-                              : icon === BottomBarButtonTypes.CHAT ? (
-                                <ChatBTN isMobile={isMobile} isTab={isTab} />
-                              ) : icon === BottomBarButtonTypes.PARTICIPANTS ? (
-                                <ParticipantsBTN
-                                  isMobile={isMobile}
-                                  isTab={isTab}
-                                />
-                              ) : icon ===
-                                BottomBarButtonTypes.MEETING_ID_COPY ? (
-                                <MeetingIdCopyBTN
-                                  isMobile={isMobile}
-                                  isTab={isTab}
-                                />
-                              ) : icon === BottomBarButtonTypes.PIP ? (
-                                <PipBTN isMobile={isMobile} isTab={isTab} />
-                              ) : null}
-                          </div>
-                        );
-                      })}
+              <div className="flex h-full items-end">
+                <Dialog.Panel className="w-screen bg-white border-t border-[#EEEEEE] shadow-xl">
+                  <div className="py-6 px-4">
+                    <div className="grid grid-cols-4 gap-x-4 gap-y-5 justify-items-center">
+                      <div className="flex flex-col items-center gap-1.5">
+                        <RaiseHandBTN />
+                        <p className="text-[10px] text-[#888888] font-poppins">Raise Hand</p>
+                      </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <WhiteBoardBTN />
+                        <p className="text-[10px] text-[#888888] font-poppins">Whiteboard</p>
+                      </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <ChatBTN />
+                        <p className="text-[10px] text-[#888888] font-poppins">Chat</p>
+                      </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <ParticipantsBTN />
+                        <p className="text-[10px] text-[#888888] font-poppins">Participants</p>
+                      </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <VBBTN />
+                        <p className="text-[10px] text-[#888888] font-poppins">Virtual BG</p>
+                      </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <ScreenShareBTN />
+                        <p className="text-[10px] text-[#888888] font-poppins">Share Screen</p>
+                      </div>
+                      <div className="col-span-3 flex items-center">
+                        <MeetingIdCopyBTN />
+                      </div>
                     </div>
                   </div>
                 </Dialog.Panel>
@@ -903,22 +472,24 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
       </Transition>
     </div>
   ) : (
-    <div className="md:flex lg:px-2 xl:px-6 pb-2 px-2 hidden">
+    <div
+      className="hidden md:flex items-center justify-between px-4 bg-white border-t border-[#EEEEEE]"
+      style={{ height: bottomBarHeight }}
+    >
       <MeetingIdCopyBTN />
-
-      <div className="flex flex-1 items-center justify-center" ref={tollTipEl}>
+      <div className="flex items-center gap-2">
         <RecordingBTN />
-        <RaiseHandBTN isMobile={isMobile} isTab={isTab} />
+        <RaiseHandBTN />
         <MicBTN />
         <WebCamBTN />
-        {/* <ScreenShareBTN isMobile={isMobile} isTab={isTab} /> */}
-        <WhiteBoardBTN isMobile={isMobile} isTab={isTab} />
-        <PipBTN isMobile={isMobile} isTab={isTab} />
-        <LeaveBTN />
+        <ScreenShareBTN />
+        <WhiteBoardBTN />
+        <VBBTN />
+        <LeaveBTN setIsMeetingLeft={setIsMeetingLeft} />
       </div>
-      <div className="flex items-center justify-center">
-        <ChatBTN isMobile={isMobile} isTab={isTab} />
-        <ParticipantsBTN isMobile={isMobile} isTab={isTab} />
+      <div className="flex items-center gap-2">
+        <ChatBTN />
+        <ParticipantsBTN />
       </div>
     </div>
   );

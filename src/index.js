@@ -10,10 +10,10 @@ root.render(
   <>
     <ToastContainer
       toastClassName={(context) =>
-        `${context?.defaultClassName} relative flex py-4 px-3 rounded overflow-hidden cursor-pointer bg-white shadow-lg`
+        `${context?.defaultClassName} relative flex py-3 px-4 rounded-2xl overflow-hidden cursor-pointer bg-white border border-[#EEEEEE] shadow-[0_4px_16px_rgba(0,0,0,0.10)]`
       }
       bodyClassName={(context) =>
-        `${context?.defaultClassName} text-[#000] text-base font-bold`
+        `${context?.defaultClassName} text-[#1B1C27] text-sm font-semibold font-poppins`
       }
       position="bottom-left"
       autoClose={4000}

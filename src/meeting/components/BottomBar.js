@@ -12,7 +12,6 @@ import {
 } from "@heroicons/react/24/outline";
 import Lottie from "lottie-react";
 import ChatIcon from "../../icons/Bottombar/ChatIcon";
-import ParticipantsIcon from "../../icons/Bottombar/ParticipantsIcon";
 import EndIcon from "../../icons/Bottombar/EndIcon";
 import RaiseHandIcon from "../../icons/Bottombar/RaiseHandIcon";
 import WhiteboardIcon from "../../icons/Bottombar/WhiteboardIcon";
@@ -293,20 +292,6 @@ function VBBTN() {
   );
 }
 
-// ─── Participants toggle (file-level) ─────────────────────────────────────────
-function ParticipantsBTN() {
-  const { sideBarMode, setSideBarMode } = useMeetingAppContext();
-  const { participants } = useMeeting();
-  return (
-    <BarBtn
-      Icon={ParticipantsIcon}
-      onClick={() => setSideBarMode((s) => (s === sideBarModes.PARTICIPANTS ? null : sideBarModes.PARTICIPANTS))}
-      active={sideBarMode === sideBarModes.PARTICIPANTS}
-      tooltip="View Participants"
-      badge={`${new Map(participants)?.size}`}
-    />
-  );
-}
 // ─── Screen share (file-level) ────────────────────────────────────────────────
 function ScreenShareBTN() {
   const { localScreenShareOn, toggleScreenShare, presenterId } = useMeeting();
@@ -400,10 +385,6 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
                         <p className="text-[10px] text-[#888888] font-poppins">Chat</p>
                       </div>
                       <div className="flex flex-col items-center gap-1.5">
-                        <ParticipantsBTN />
-                        <p className="text-[10px] text-[#888888] font-poppins">Participants</p>
-                      </div>
-                      <div className="flex flex-col items-center gap-1.5">
                         <VBBTN />
                         <p className="text-[10px] text-[#888888] font-poppins">Virtual BG</p>
                       </div>
@@ -440,7 +421,6 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
       </div>
       <div className="flex items-center gap-2">
         <ChatBTN />
-        <ParticipantsBTN />
       </div>
     </div>
   );

@@ -7,17 +7,13 @@ const LIMITATION_CONTENT = {
     title: "Low Bandwidth",
     message: "Your network bandwidth is low. Video and audio quality may drop.",
   },
-  congestion: {
-    title: "Network Congestion",
-    message: "Network congestion detected. You may experience lag or delays.",
-  },
   cpu: {
     title: "High CPU Usage",
     message: "High CPU usage detected. Your device may be struggling.",
   },
 };
 
-const ALL_TYPES = ["bandwidth", "congestion", "cpu"];
+const ALL_TYPES = ["bandwidth", "cpu"];
 
 const NetworkQualityPopup = ({ limitations }) => {
   const [dismissed, setDismissed] = useState({});

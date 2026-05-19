@@ -20,10 +20,12 @@ const SideBarTabView = ({
 }) => {
   const { participants } = useMeeting();
   const { sideBarMode } = useMeetingAppContext();
+  const isChat = sideBarMode === "CHAT";
 
   return (
+    // Outer shell — provides background colour and uniform padding around the card
     <div
-      className="bg-[#1B1C27]"
+      className={"bg-transparent mt-2"}
       style={{
         height,
         width: sideBarContainerWidth,
@@ -31,39 +33,53 @@ const SideBarTabView = ({
         paddingLeft: panelPadding,
         paddingRight: panelPadding,
         paddingBottom: panelPadding,
+        boxSizing: "border-box",
       }}
     >
+      {/* Inner card — fills the padded area completely */}
       <div
-        className="bg-[#252636] overflow-hidden"
-        style={{ height, borderRadius: 12 }}
+        className={`overflow-hidden flex flex-col bg-white border border-[#EEEEEE]`}
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: 12,
+        }}
       >
+        {/* Panel header */}
         {sideBarMode && (
           <div
-            className="flex items-center justify-between"
+            className="flex items-center justify-between shrink-0"
             style={{
-              padding: panelHeaderPadding,
-              height: panelHeaderHeight - 1,
-              borderBottom: "1px solid #3D3E5033",
+              paddingLeft: panelHeaderPadding,
+              paddingRight: panelHeaderPadding,
+              height: panelHeaderHeight,
+              borderBottom: "1px solid #EEEEEE",
             }}
           >
-            <p className="text-sm font-bold text-white font-poppins">
+            <p className={`text-sm font-bold font-poppins text-[#1B1C27]`}>
               {sideBarMode === "PARTICIPANTS"
                 ? `Participants (${new Map(participants)?.size})`
-                : sideBarMode.charAt(0).toUpperCase() + sideBarMode.slice(1).toLowerCase()}
+                : isChat
+                  ? "In-Call Chat"
+                  : sideBarMode.charAt(0).toUpperCase() + sideBarMode.slice(1).toLowerCase()}
             </p>
             <button
-              className="text-[#9FA0B7] hover:text-white transition-colors"
+              className={`transition-colors text-[#888888] hover:text-[#1B1C27]`}
               onClick={handleClose}
             >
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
         )}
-        {sideBarMode === "PARTICIPANTS" ? (
-          <ParticipantPanel panelHeight={panelHeight} />
-        ) : sideBarMode === "CHAT" ? (
-          <ChatPanel panelHeight={panelHeight} />
-        ) : null}
+
+        {/* Panel content — fills remaining height */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {sideBarMode === "PARTICIPANTS" ? (
+            <ParticipantPanel panelHeight={panelHeight} />
+          ) : sideBarMode === "CHAT" ? (
+            <ChatPanel panelHeight={panelHeight} />
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -77,7 +93,7 @@ export function SidebarConatiner({ height, sideBarContainerWidth }) {
   const isXLDesktop = useMediaQuery({ minWidth: 1440 });
 
   const panelPadding = 8;
-  const paddedHeight = height - panelPadding * 3.5;
+  const paddedHeight = height - panelPadding * 2.5;
 
   const panelHeaderHeight = isMobile ? 40 : isTab ? 44 : isLGDesktop ? 48 : isXLDesktop ? 52 : 0;
   const panelHeaderPadding = isMobile ? 6 : isTab ? 8 : isLGDesktop ? 10 : isXLDesktop ? 12 : 0;

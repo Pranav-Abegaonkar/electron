@@ -1,20 +1,18 @@
 import { useMeeting, usePubSub } from "@videosdk.live/react-sdk";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatAMPM, json_verify, nameTructed } from "../../utils/helper";
 import { XMarkIcon, FaceSmileIcon } from "@heroicons/react/24/outline";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
-import Picker from "@emoji-mart/react";
-import data from "@emoji-mart/data";
+import EmojiPicker from "emoji-picker-react";
 
 // ─── Chip selector ────────────────────────────────────────────────────────────
 const Chip = ({ label, selected, onClick }) => (
   <button
     onClick={onClick}
-    className={`px-3 py-1.5 rounded-full text-xs font-medium font-poppins border transition-colors ${
-      selected
-        ? "bg-[#888CC4] text-white border-[#888CC4]"
-        : "text-[#888888] border-[#CCCCCC] hover:border-[#888CC4] hover:text-[#888CC4]"
-    }`}
+    className={`px-3 py-1.5 rounded-full text-xs font-medium font-poppins border transition-colors ${selected
+      ? "bg-[#888CC4] text-white border-[#888CC4]"
+      : "text-[#888888] border-[#CCCCCC] hover:border-[#888CC4] hover:text-[#888CC4]"
+      }`}
   >
     {label}
   </button>
@@ -179,25 +177,22 @@ const ChatMessage = ({ senderId, senderName, text, timestamp }) => {
   return (
     <div className={`flex ${localSender ? "justify-end" : "justify-start"} mt-3`}>
       <div
-        className={`flex flex-col py-2 px-3 rounded-xl max-w-[85%] ${
-          localSender
-            ? "items-end bg-[#888CC4]"
-            : "items-start bg-[#F5F5F5]"
-        }`}
+        className={`flex flex-col py-2 px-3 rounded-xl max-w-[85%] ${localSender
+          ? "items-end bg-[#888CC4]"
+          : "items-start bg-[#F5F5F5]"
+          }`}
       >
         {!localSender && (
           <p className="text-xs font-poppins text-[#888888]">
             {nameTructed(senderName, 15)}
           </p>
         )}
-        <p className={`text-sm font-poppins whitespace-pre-wrap break-words mt-0.5 ${
-          localSender ? "text-white" : "text-[#1B1C27]"
-        }`}>
+        <p className={`text-sm font-poppins whitespace-pre-wrap break-words mt-0.5 ${localSender ? "text-white" : "text-[#1B1C27]"
+          }`}>
           {text}
         </p>
-        <p className={`text-[10px] italic mt-1 font-poppins ${
-          localSender ? "text-[#E8E9F8]" : "text-[#888888]"
-        }`}>
+        <p className={`text-[10px] italic mt-1 font-poppins ${localSender ? "text-[#E8E9F8]" : "text-[#888888]"
+          }`}>
           {formatAMPM(new Date(timestamp))}
         </p>
       </div>
@@ -317,24 +312,21 @@ const ChatInput = ({ inputHeight }) => {
         <button
           type="button"
           onClick={() => setShowEmoji((s) => !s)}
-          className={`p-1.5 rounded-lg transition-colors ${
-            showEmoji ? "bg-[#F5F6FF] text-[#888CC4]" : "text-[#888888] hover:bg-[#F5F6FF] hover:text-[#888CC4]"
-          }`}
+          className={`p-1.5 rounded-lg transition-colors ${showEmoji ? "bg-[#F5F6FF] text-[#888CC4]" : "text-[#888888] hover:bg-[#F5F6FF] hover:text-[#888CC4]"
+            }`}
         >
           <FaceSmileIcon className="w-5 h-5" />
         </button>
         {showEmoji && (
           <div className="absolute bottom-full mb-2 right-0 z-20 shadow-xl rounded-2xl overflow-hidden">
-            <Picker
-              data={data}
-              onEmojiSelect={(e) => handleEmojiSelect(e.native)}
+            <EmojiPicker
+              onEmojiClick={(emojiData) => handleEmojiSelect(emojiData.emoji)}
               theme="light"
-              previewPosition="none"
-              skinTonePosition="none"
-              perLine={8}
-              emojiSize={20}
-              emojiButtonSize={28}
-              maxFrequentRows={2}
+              searchDisabled={false}
+              skinTonesDisabled={true}
+              previewConfig={{ showPreview: false }}
+              width={320}
+              height={400}
             />
           </div>
         )}
@@ -345,11 +337,10 @@ const ChatInput = ({ inputHeight }) => {
         type="button"
         onClick={sendMessage}
         disabled={!canSend}
-        className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-          canSend
-            ? "bg-[#888CC4] hover:bg-[#7a7eb5] cursor-pointer"
-            : "bg-[#EEEEEE] cursor-not-allowed"
-        }`}
+        className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${canSend
+          ? "bg-[#888CC4] hover:bg-[#7a7eb5] cursor-pointer"
+          : "bg-[#EEEEEE] cursor-not-allowed"
+          }`}
       >
         <PaperAirplaneIcon className="w-4 h-4 text-white" />
       </button>
@@ -400,11 +391,10 @@ const ChatView = ({ panelHeight, onExtendClick }) => {
                   console.log(`[Chat Tabs] "${tab}" tab clicked`);
                 }
               }}
-              className={`flex-1 py-2 text-xs font-semibold font-poppins transition-colors border-b-2 ${
-                isActive
-                  ? "text-[#1B1C27] border-[#888CC4]"
-                  : "text-[#888888] border-transparent hover:text-[#1B1C27]"
-              }`}
+              className={`flex-1 py-2 text-xs font-semibold font-poppins transition-colors border-b-2 ${isActive
+                ? "text-[#1B1C27] border-[#888CC4]"
+                : "text-[#888888] border-transparent hover:text-[#1B1C27]"
+                }`}
             >
               {tab}
             </button>

@@ -1,22 +1,17 @@
 import {
-  Constants,
   useMeeting,
   usePubSub,
   useMediaDevice,
   createCameraVideoTrack,
 } from "@videosdk.live/react-sdk";
-import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useEffect, useRef, useState } from "react";
 import {
   ClipboardIcon,
   CheckIcon,
   EllipsisHorizontalIcon,
 } from "@heroicons/react/24/outline";
 import Lottie from "lottie-react";
-import recordingBlink from "../../static/animations/recording-blink.json";
-import useIsRecording from "../../hooks/useIsRecording";
-import RecordingIcon from "../../icons/Bottombar/RecordingIcon";
 import ChatIcon from "../../icons/Bottombar/ChatIcon";
-import ParticipantsIcon from "../../icons/Bottombar/ParticipantsIcon";
 import EndIcon from "../../icons/Bottombar/EndIcon";
 import RaiseHandIcon from "../../icons/Bottombar/RaiseHandIcon";
 import WhiteboardIcon from "../../icons/Bottombar/WhiteboardIcon";
@@ -177,49 +172,6 @@ function WhiteBoardBTN() {
   );
 }
 
-// ─── Recording (file-level) ───────────────────────────────────────────────────
-function RecordingBTN() {
-  const { startRecording, stopRecording, recordingState } = useMeeting();
-  const defaultOptions = {
-    loop: true,
-    autoplay: true,
-    animationData: recordingBlink,
-    rendererSettings: { preserveAspectRatio: "xMidYMid slice" },
-    height: 64,
-    width: 160,
-  };
-  const isRecording = useIsRecording();
-  const isRecordingRef = useRef(isRecording);
-  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
-
-  const { isRequestProcessing } = useMemo(
-    () => ({
-      isRequestProcessing:
-        recordingState === Constants.recordingEvents.RECORDING_STARTING ||
-        recordingState === Constants.recordingEvents.RECORDING_STOPPING,
-    }),
-    [recordingState]
-  );
-
-  const tooltip =
-    recordingState === Constants.recordingEvents.RECORDING_STARTED ? "Stop Recording" :
-      recordingState === Constants.recordingEvents.RECORDING_STARTING ? "Starting Recording" :
-        recordingState === Constants.recordingEvents.RECORDING_STOPPED ? "Start Recording" :
-          recordingState === Constants.recordingEvents.RECORDING_STOPPING ? "Stopping Recording" :
-            "Start Recording";
-
-  return (
-    <BarBtn
-      Icon={RecordingIcon}
-      onClick={() => { if (isRecordingRef.current) stopRecording(); else startRecording(); }}
-      active={isRecording}
-      tooltip={tooltip}
-      lottieOption={isRecording ? defaultOptions : null}
-      isRequestProcessing={isRequestProcessing}
-    />
-  );
-}
-
 // ─── Leave (file-level, needs setIsMeetingLeft prop) ──────────────────────────
 function LeaveBTN({ setIsMeetingLeft }) {
   const { leave } = useMeeting();
@@ -340,20 +292,6 @@ function VBBTN() {
   );
 }
 
-// ─── Participants toggle (file-level) ─────────────────────────────────────────
-function ParticipantsBTN() {
-  const { sideBarMode, setSideBarMode } = useMeetingAppContext();
-  const { participants } = useMeeting();
-  return (
-    <BarBtn
-      Icon={ParticipantsIcon}
-      onClick={() => setSideBarMode((s) => (s === sideBarModes.PARTICIPANTS ? null : sideBarModes.PARTICIPANTS))}
-      active={sideBarMode === sideBarModes.PARTICIPANTS}
-      tooltip="View Participants"
-      badge={`${new Map(participants)?.size}`}
-    />
-  );
-}
 // ─── Screen share (file-level) ────────────────────────────────────────────────
 function ScreenShareBTN() {
   const { localScreenShareOn, toggleScreenShare, presenterId } = useMeeting();
@@ -408,7 +346,6 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
       <LeaveBTN setIsMeetingLeft={setIsMeetingLeft} />
       <MicBTN />
       <WebCamBTN />
-      <RecordingBTN />
       <button
         onClick={() => setOpen(true)}
         className="flex items-center justify-center p-2.5 rounded-lg border border-[#EEEEEE] bg-white hover:bg-[#F5F6FF] transition-colors"
@@ -448,10 +385,6 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
                         <p className="text-[10px] text-[#888888] font-poppins">Chat</p>
                       </div>
                       <div className="flex flex-col items-center gap-1.5">
-                        <ParticipantsBTN />
-                        <p className="text-[10px] text-[#888888] font-poppins">Participants</p>
-                      </div>
-                      <div className="flex flex-col items-center gap-1.5">
                         <VBBTN />
                         <p className="text-[10px] text-[#888888] font-poppins">Virtual BG</p>
                       </div>
@@ -478,7 +411,6 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
     >
       <MeetingIdCopyBTN />
       <div className="flex items-center gap-2">
-        <RecordingBTN />
         <RaiseHandBTN />
         <MicBTN />
         <WebCamBTN />
@@ -489,7 +421,6 @@ export function BottomBar({ bottomBarHeight, setIsMeetingLeft }) {
       </div>
       <div className="flex items-center gap-2">
         <ChatBTN />
-        <ParticipantsBTN />
       </div>
     </div>
   );

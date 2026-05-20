@@ -19,7 +19,7 @@ import { ParticipantView } from "../components/ParticipantView";
 import useMediaStream from "../hooks/useMediaStream";
 
 const SLACK_WEBHOOK_URL = process.env.REACT_APP_SLACK_WEBHOOK_URL;
-const QUALITY_LIMITATION_TYPES = ["bandwidth", "congestion", "cpu"];
+const QUALITY_LIMITATION_TYPES = ["bandwidth", "cpu"];
 
 export function MeetingContainer({
   onMeetingLeave,
@@ -83,7 +83,6 @@ export function MeetingContainer({
   const [meetingError, setMeetingError] = useState(false);
   const [activeLimitations, setActiveLimitations] = useState({
     bandwidth: false,
-    congestion: false,
     cpu: false,
   });
 
@@ -347,12 +346,11 @@ export function MeetingContainer({
 
   const activeLimitationsTrackerRef = useRef({
     bandwidth: false,
-    congestion: false,
     cpu: false,
   });
 
   /**
-   * Handles network quality limitation events (e.g. poor bandwidth or congestion).
+   * Handles network quality limitation events (e.g. poor bandwidth ).
    * It deduplicates continuous 'detected' events and publishes DEGRADE/RESTORE
    * commands via PubSub so all participants reduce video quality to compensate.
    */
